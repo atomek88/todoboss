@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:todoApp/feature/shared/navigation/app_router.dart';
+import 'package:todoApp/feature/shared/utils/theme/theme.dart';
+import 'package:todoApp/feature/shared/utils/theme/cupertino_theme.dart';
+import 'package:todoApp/l10n/app_localizations.dart';
 
 class MyApp extends ConsumerStatefulWidget {
   const MyApp({
@@ -25,17 +28,30 @@ class _MyAppState extends ConsumerState<MyApp> {
       return CupertinoApp.router(
         title: widget.launchTitle,
         // theme settings
-        theme: const CupertinoThemeData(brightness: Brightness.light),
+        theme: lightCupertinoTheme(),
+        // For dark mode support
+        // The CupertinoApp doesn't have a direct darkTheme property like MaterialApp
+        // Instead, it uses the theme property and respects the system brightness
         // use auto router to decide widget
         routerConfig: _appRouter.config(),
+        localizationsDelegates: Loc.localizationsDelegates,
+        supportedLocales: const [
+          Locale('en', ''),
+        ],
       );
     } else {
       return MaterialApp.router(
         title: widget.launchTitle,
         // theme settings
-        theme: ThemeData(colorSchemeSeed: Colors.green, useMaterial3: true),
+        // theme: ThemeData(colorSchemeSeed: Colors.green, useMaterial3: true),
         // use auto router to decide widget
+        theme: lightTheme(context),
+        darkTheme: darkTheme(context),
         routerConfig: _appRouter.config(),
+        localizationsDelegates: Loc.localizationsDelegates,
+        supportedLocales: const [
+          Locale('en', ''),
+        ],
       );
     }
   }
