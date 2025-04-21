@@ -47,10 +47,15 @@ class _HomePageState extends ConsumerState<HomePage> {
             children: <Widget>[
               TextButton(
                   onPressed: () =>
+                      context.router.push(const UsersWrapperRoute()),
+                  child: const Text('Search users Example')),
+              TextButton(
+                  onPressed: () =>
                       context.router.push(const CounterWrapperRoute()),
                   child: const Text('Counter2 Example')),
               TextButton(
-                  onPressed: () => context.router.push(const TodosHomeRoute()),
+                  onPressed: () =>
+                      context.router.push(const TodosWrapperRoute()),
                   child: const Text('Todos Example')),
               TextButton(
                   onPressed: () =>

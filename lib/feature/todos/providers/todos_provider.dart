@@ -48,6 +48,14 @@ class TodoListNotifier extends StateNotifier<List<Todo>> {
     state = newList;
     _saveTodos();
   }
+  
+  void restoreTodo(int index, Todo todo) {
+    final newList = [...state];
+    // Restore the todo by setting its status back to active (0)
+    newList[index] = todo.copyWith(status: 0, endedOn: null);
+    state = newList;
+    _saveTodos();
+  }
 
   void completeTodo(int index) {
     final newList = [...state];
