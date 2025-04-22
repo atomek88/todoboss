@@ -40,6 +40,9 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  # Add assets configuration
+  assets:
+    - assets/icons/
   fonts:
     - family: IBMPlexMono
       fonts:

@@ -1,7 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:todoApp/feature/shared/utils/platform.dart';
-import 'package:todoApp/profile/views/ios/profile_screen.dart' as ios;
+import 'package:todoApp/profile/views/ios/profile_screens.dart' as ios;
 import 'package:todoApp/profile/views/android/profile_screen.dart' as android;
 
 @RoutePage()

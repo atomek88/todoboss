@@ -6,6 +6,7 @@ import '../providers/todos_provider.dart';
 import '../models/todo.dart';
 import '../widgets/todo_form_modal.dart';
 import '../widgets/todo_list_item.dart';
+import '../widgets/undo_button.dart';
 
 @RoutePage()
 class TodosHomePage extends ConsumerStatefulWidget {
@@ -19,7 +20,12 @@ class _TodosHomePageState extends ConsumerState<TodosHomePage> {
   // Store the last deleted todo for undo functionality
   Todo? _lastDeletedTodo;
   int? _lastDeletedIndex;
-  bool _showUndoButton = false;
+  bool _showDeleteUndoButton = false;
+  
+  // Store the last completed todo for undo functionality
+  Todo? _lastCompletedTodo;
+  int? _lastCompletedIndex;
+  bool _showCompleteUndoButton = false;
 
   @override
   Widget build(BuildContext context) {
@@ -67,18 +73,18 @@ class _TodosHomePageState extends ConsumerState<TodosHomePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Completed',
+                      const Text('Deleted',
                           style: TextStyle(fontWeight: FontWeight.bold)),
                       AnimatedCounter(
-                          count: completedCount, total: maxTodos, color: Colors.teal),
+                          count: deletedCount, total: maxTodos, color: Colors.grey),
                     ],
                   ),
                 ),
                 Column(
                   children: [
-                    const Text('Deleted',
+                    const Text('Completed',
                         style: TextStyle(fontWeight: FontWeight.bold)),
-                    AnimatedCounter(count: deletedCount, total: maxTodos, color: Colors.grey),
+                    AnimatedCounter(count: completedCount, total: maxTodos, color: Colors.teal),
                   ],
                 ),
               ],
@@ -98,7 +104,15 @@ class _TodosHomePageState extends ConsumerState<TodosHomePage> {
                         todo: todo,
                         index: originalIndex,
                         onComplete: (todo, index) {
+                          // Store the completed todo for potential undo
+                          setState(() {
+                            _lastCompletedTodo = todo;
+                            _lastCompletedIndex = index;
+                            _showCompleteUndoButton = true;
+                          });
+                          
                           ref.read(todoListProvider.notifier).completeTodo(index);
+                          
                           // Use Future.delayed to show the snackbar after the animation completes
                           Future.delayed(const Duration(milliseconds: 300), () {
                             if (context.mounted) {
@@ -115,22 +129,11 @@ class _TodosHomePageState extends ConsumerState<TodosHomePage> {
                           setState(() {
                             _lastDeletedTodo = todo;
                             _lastDeletedIndex = index;
-                            _showUndoButton = true;
+                            _showDeleteUndoButton = true;
                           });
                           
                           // Delete the todo
                           ref.read(todoListProvider.notifier).deleteTodo(index);
-                          
-                          // Hide the undo button after 5 seconds
-                          Future.delayed(const Duration(seconds: 5), () {
-                            if (mounted) {
-                              setState(() {
-                                _showUndoButton = false;
-                                _lastDeletedTodo = null;
-                                _lastDeletedIndex = null;
-                              });
-                            }
-                          });
                           
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text('"${todo.title}" moved to trash')),
@@ -145,34 +148,88 @@ class _TodosHomePageState extends ConsumerState<TodosHomePage> {
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          if (_showUndoButton)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8.0),
-              child: FloatingActionButton.extended(
-                onPressed: () {
-                  if (_lastDeletedTodo != null && _lastDeletedIndex != null) {
-                    // Restore the deleted todo
-                    ref.read(todoListProvider.notifier).restoreTodo(
-                          _lastDeletedIndex!,
-                          _lastDeletedTodo!,
-                        );
-                    
-                    // Hide the undo button
-                    setState(() {
-                      _showUndoButton = false;
-                      _lastDeletedTodo = null;
-                      _lastDeletedIndex = null;
-                    });
-                    
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Todo restored')),
-                    );
-                  }
-                },
-                label: const Text('Undo'),
-                icon: const Icon(Icons.undo),
-                backgroundColor: Colors.grey[700],
-              ),
+          // Undo button for completed todos
+          if (_showCompleteUndoButton)
+            UndoButton(
+              label: 'Undo Complete',
+              onPressed: () {
+                if (_lastCompletedTodo != null && _lastCompletedIndex != null) {
+                  // Create a copy of the todo with status set back to active
+                  final restoredTodo = Todo.withId(
+                    id: _lastCompletedTodo!.id,
+                    title: _lastCompletedTodo!.title,
+                    description: _lastCompletedTodo!.description,
+                    priority: _lastCompletedTodo!.priority,
+                    rollover: _lastCompletedTodo!.rollover,
+                    status: 0, // Set back to active
+                    createdAt: _lastCompletedTodo!.createdAt,
+                    endedOn: null, // Clear completion date
+                  );
+                  
+                  // Update the todo
+                  ref.read(todoListProvider.notifier).updateTodo(
+                    _lastCompletedIndex!,
+                    restoredTodo,
+                  );
+                  
+                  // Hide the undo button
+                  setState(() {
+                    _showCompleteUndoButton = false;
+                    _lastCompletedTodo = null;
+                    _lastCompletedIndex = null;
+                  });
+                  
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Task marked as active')),
+                  );
+                }
+              },
+              onDurationEnd: () {
+                if (mounted) {
+                  setState(() {
+                    _showCompleteUndoButton = false;
+                    _lastCompletedTodo = null;
+                    _lastCompletedIndex = null;
+                  });
+                }
+              },
+              // Use the same grey styling for consistency
+              backgroundColor: Colors.grey[700],
+            ),
+          
+          // Undo button for deleted todos
+          if (_showDeleteUndoButton)
+            UndoButton(
+              label: 'Undo Delete',
+              onPressed: () {
+                if (_lastDeletedTodo != null && _lastDeletedIndex != null) {
+                  // Restore the deleted todo
+                  ref.read(todoListProvider.notifier).restoreTodo(
+                        _lastDeletedIndex!,
+                        _lastDeletedTodo!,
+                      );
+                  
+                  // Hide the undo button
+                  setState(() {
+                    _showDeleteUndoButton = false;
+                    _lastDeletedTodo = null;
+                    _lastDeletedIndex = null;
+                  });
+                  
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Todo restored')),
+                  );
+                }
+              },
+              onDurationEnd: () {
+                if (mounted) {
+                  setState(() {
+                    _showDeleteUndoButton = false;
+                    _lastDeletedTodo = null;
+                    _lastDeletedIndex = null;
+                  });
+                }
+              },
             ),
           FloatingActionButton(
             onPressed: () {

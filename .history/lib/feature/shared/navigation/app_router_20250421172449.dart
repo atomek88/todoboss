@@ -16,7 +16,6 @@ class AppRouter extends $AppRouter {
         AutoRoute(page: CounterWrapperRoute.page),
         AutoRoute(page: TodosHomeRoute.page),
         AutoRoute(page: ProfileWrapperRoute.page),
-
         // EditTaskRoute should be nested under TodosHomeRoute
         AutoRoute(page: EditTaskRoute.page),
         AutoRoute(page: CompletedTasksRoute.page),

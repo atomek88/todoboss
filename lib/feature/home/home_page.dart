@@ -1,10 +1,10 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:todoApp/feature/shared/navigation/app_router.dart';
 import 'package:todoApp/feature/shared/navigation/app_router.gr.dart';
 import 'package:todoApp/feature/shared/utils/platform.dart';
+import 'package:todoApp/feature/shared/widgets/recurring_app_icon.dart';
 import 'package:todoApp/feature/shared/utils/styles/app_color.dart';
 import 'package:todoApp/feature/shared/widgets/shared_app_bar.dart';
 
@@ -56,6 +56,52 @@ class _HomePageState extends ConsumerState<HomePage> {
                   onPressed: () =>
                       context.router.push(const AndroidSpecificRoute()),
                   child: const Text('Android')),
+
+              // Add the App Icons widget
+              const SizedBox(height: 20),
+              Center(
+                child: Column(
+                  children: [
+                    Text('Tap icons to toggle activation state',
+                        style: TextStyle(color: Colors.grey[600])),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Rock Hill Icon
+                        SquareAppIcon(
+                          iconAsset: 'assets/icons/rock-hill.png',
+                          activationProvider: rockIconActivatedProvider,
+                          onStateChanged: () {
+                            final isActivated = ref.read(rockIconActivatedProvider);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Rock Hill icon ${isActivated ? 'activated' : 'deactivated'}'),
+                                duration: const Duration(seconds: 1),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 16),
+                        // Slinky Icon
+                        SquareAppIcon(
+                          iconAsset: 'assets/icons/slinky.png',
+                          activationProvider: slinkyIconActivatedProvider,
+                          onStateChanged: () {
+                            final isActivated = ref.read(slinkyIconActivatedProvider);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Slinky icon ${isActivated ? 'activated' : 'deactivated'}'),
+                                duration: const Duration(seconds: 1),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -101,6 +147,66 @@ class _IOSHomePageState extends ConsumerState<IOSHomePage> {
               CupertinoButton(
                 onPressed: () => context.router.push(const IOSSpecificRoute()),
                 child: const Text('ios'),
+              ),
+
+              // Add the App Icons widget for iOS
+              const SizedBox(height: 20),
+              Column(
+                children: [
+                  Text('Tap icons to toggle activation state',
+                      style: TextStyle(color: CupertinoColors.systemGrey)),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Rock Hill Icon
+                      SquareAppIcon(
+                        iconAsset: 'assets/icons/rock-hill.png',
+                        activationProvider: rockIconActivatedProvider,
+                        onStateChanged: () {
+                          final isActivated = ref.read(rockIconActivatedProvider);
+                          // Optional: Show feedback when icon state changes
+                          showCupertinoModalPopup(
+                            context: context,
+                            builder: (context) => CupertinoActionSheet(
+                              title: Text('Rock Hill Icon ${isActivated ? 'Activated' : 'Deactivated'}'),
+                              message: Text('You ${isActivated ? 'activated' : 'deactivated'} the Rock Hill icon'),
+                              actions: [
+                                CupertinoActionSheetAction(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text('OK'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 16),
+                      // Slinky Icon
+                      SquareAppIcon(
+                        iconAsset: 'assets/icons/slinky.png',
+                        activationProvider: slinkyIconActivatedProvider,
+                        onStateChanged: () {
+                          final isActivated = ref.read(slinkyIconActivatedProvider);
+                          // Optional: Show feedback when icon state changes
+                          showCupertinoModalPopup(
+                            context: context,
+                            builder: (context) => CupertinoActionSheet(
+                              title: Text('Slinky Icon ${isActivated ? 'Activated' : 'Deactivated'}'),
+                              message: Text('You ${isActivated ? 'activated' : 'deactivated'} the Slinky icon'),
+                              actions: [
+                                CupertinoActionSheetAction(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text('OK'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ],
           ),

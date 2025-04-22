@@ -34,6 +34,7 @@ class TodoListItem extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Dismissible(
       key: Key(todo.id),
+      // Background for swipe right (complete)
       background: Container(
         alignment: Alignment.centerLeft,
         padding: const EdgeInsets.only(left: 20.0),
@@ -43,11 +44,32 @@ class TodoListItem extends ConsumerWidget {
           color: Colors.white,
         ),
       ),
-      direction: DismissDirection.startToEnd,
-      dismissThresholds: const {DismissDirection.startToEnd: 0.4},
+      // Background for swipe left (delete)
+      secondaryBackground: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20.0),
+        color: Colors.red,
+        child: const Icon(
+          Icons.delete,
+          color: Colors.white,
+        ),
+      ),
+      direction: DismissDirection.horizontal, // Allow both directions
+      dismissThresholds: const {
+        DismissDirection.startToEnd: 0.4,
+        DismissDirection.endToStart: 0.4,
+      },
       confirmDismiss: (direction) async {
-        onComplete(todo, index);
-        return true;
+        if (direction == DismissDirection.startToEnd) {
+          // Complete todo
+          onComplete(todo, index);
+          return true;
+        } else if (direction == DismissDirection.endToStart) {
+          // Delete todo
+          onDelete(todo, index);
+          return false; // Don't actually dismiss, we'll handle it in the parent
+        }
+        return false;
       },
       child: GestureDetector(
         onTap: () {
@@ -56,10 +78,10 @@ class TodoListItem extends ConsumerWidget {
         child: Card(
           elevation: 2,
           margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-          color: _priorityColor(todo.priority).withOpacity(0.2),
+          color: _priorityColor(todo.priority).withOpacity(0.4),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           child: Container(
-            height: 80, // Fixed height for all items
+            height: 70, // Fixed height for all items
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: [
@@ -67,87 +89,48 @@ class TodoListItem extends ConsumerWidget {
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.max,
                     children: [
-                      // Title with priority indicator
-                      Row(
-                        children: [
-                          Container(
-                            width: 12,
-                            height: 12,
-                            margin: const EdgeInsets.only(right: 8),
-                            decoration: BoxDecoration(
-                              color: _priorityColor(todo.priority),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          Expanded(
-                            child: Text(
-                              todo.title,
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
+                      // Title always at top
+                      Text(
+                        todo.title,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
                       // Description
-                      if (todo.description != null &&
-                          todo.description!.isNotEmpty)
-                        Expanded(
-                          child: Text(
-                            todo.description!,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style:
-                                TextStyle(color: Colors.black.withOpacity(0.6)),
-                          ),
-                        ),
+                      Expanded(
+                        child: todo.description != null && todo.description!.isNotEmpty
+                          ? Text(
+                              todo.description!,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(color: Colors.black.withOpacity(0.6)),
+                            )
+                          : const SizedBox(), // Empty space if no description
+                      ),
                     ],
                   ),
                 ),
                 // Right side - Actions
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Subtasks button
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        customBorder: const CircleBorder(),
-                        onTap: () {
-                          print('add subtasks');
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Icon(
-                            Icons.list_alt_rounded,
-                            color: Colors.blueGrey.shade700,
-                            size: 22,
-                          ),
-                        ),
+                // Subtasks button
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: () {
+                      print('add subtasks');
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Icon(
+                        Icons.list_alt_rounded,
+                        color: Colors.blueGrey.shade700,
+                        size: 22,
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    // Delete button
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        customBorder: const CircleBorder(),
-                        onTap: () => onDelete(todo, index),
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Icon(
-                            Icons.delete_outline_rounded,
-                            color: Colors.redAccent.shade200,
-                            size: 22,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),

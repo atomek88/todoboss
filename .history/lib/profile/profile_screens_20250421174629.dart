@@ -1,3 +1,4 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,7 +9,7 @@ import 'package:todoApp/profile/widgets/ios_profile_form.dart';
 import 'package:todoApp/profile/widgets/task_stats.dart';
 import 'package:todoApp/profile/widgets/ios_task_stats.dart';
 
-// @RoutePage()
+@RoutePage()
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({Key? key}) : super(key: key);
 
@@ -76,7 +77,7 @@ class ProfilePage extends ConsumerWidget {
   }
 }
 
-// @RoutePage()
+@RoutePage()
 class IOSProfilePage extends ConsumerWidget {
   const IOSProfilePage({Key? key}) : super(key: key);
 

@@ -294,10 +294,9 @@ void showTodoFormModal(BuildContext context, {Todo? todo, int? index}) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
-    isDismissible: true,
+    isDismissible: true, // Allow dismiss by tapping outside
     enableDrag: true,
     backgroundColor: Colors.transparent,
-    // Ensure clicking outside dismisses the modal
     barrierColor: Colors.black54,
     builder: (context) => DraggableScrollableSheet(
       initialChildSize: 0.5,
