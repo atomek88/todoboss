@@ -1,9 +1,13 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:todoApp/feature/users/models/user_model.dart';
 import 'package:todoApp/feature/users/repositories/user_repository.dart';
+import 'package:todoApp/core/storage/storage_service.dart';
 
 // Repository provider
-final userRepositoryProvider = Provider<UserRepository>((ref) => UserRepository());
+final userRepositoryProvider = Provider<UserRepository>((ref) {
+  final storageService = ref.watch(storageServiceProvider);
+  return UserRepository(storageService);
+});
 
 // User notifier to manage the current user state
 class UserNotifier extends StateNotifier<UserModel?> {

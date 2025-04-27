@@ -1,12 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:auto_route/auto_route.dart';
-import 'package:todoApp/feature/shared/navigation/app_router.gr.dart';
+import 'package:todoApp/shared/navigation/app_router.gr.dart';
+import 'package:todoApp/shared/utils/show_snack_bar.dart';
+import 'package:todoApp/shared/widgets/swipeable_date_picker.dart';
+import 'package:todoApp/shared/providers/selected_date_provider.dart';
+import 'package:todoApp/shared/widgets/confetti_celebration.dart';
+import '../services/todo_date_filter_service.dart';
+import 'package:flutter/foundation.dart';
 import '../providers/todos_provider.dart';
+import '../providers/todo_goal_provider.dart';
 import '../models/todo.dart';
 import '../widgets/todo_form_modal.dart';
 import '../widgets/todo_list_item.dart';
-import '../widgets/undo_button.dart';
+import '../../../shared/widgets/undo_button.dart';
+import '../../voice/widgets/voice_recording_button.dart';
+import '../../goals/providers/daily_goal_provider.dart';
 
 @RoutePage()
 class TodosHomePage extends ConsumerStatefulWidget {
@@ -19,225 +28,357 @@ class TodosHomePage extends ConsumerStatefulWidget {
 class _TodosHomePageState extends ConsumerState<TodosHomePage> {
   // Store the last deleted todo for undo functionality
   Todo? _lastDeletedTodo;
-  int? _lastDeletedIndex;
+  String? _lastDeletedId;
   bool _showDeleteUndoButton = false;
-  
+
   // Store the last completed todo for undo functionality
   Todo? _lastCompletedTodo;
-  int? _lastCompletedIndex;
+  String? _lastCompletedId;
   bool _showCompleteUndoButton = false;
 
   @override
-  Widget build(BuildContext context) {
-    // Get current date for AppBar
-    final now = DateTime.now();
-    final months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    final currentDate = '${months[now.month - 1]} ${now.day}';
+  void initState() {
+    super.initState();
+    // Schedule a microtask to update goals after the first build
+    Future.microtask(() => _updateGoals());
+  }
+
+  @override
+  void didUpdateWidget(TodosHomePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Schedule a microtask to update goals after rebuild
+    Future.microtask(() => _updateGoals());
+  }
+
+  // Update the goals outside the build method
+  void _updateGoals() {
+    if (!mounted) return;
     
+    final todos = ref.read(todoListProvider);
+    final selectedDate = ref.read(selectedDateProvider);
+    final completedCount = todos.where((Todo todo) => todo.status == 1).length;
+    
+    // Update the daily goal achievement outside the build method
+    ref
+        .read(dailyGoalAchievementProvider.notifier)
+        .updateCompletedCount(selectedDate, completedCount);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Get all todos and the selected date
     final todos = ref.watch(todoListProvider);
+    final selectedDate = ref.watch(selectedDateProvider);
+
+    // Filter todos by status for counters
     final completedCount = todos.where((Todo todo) => todo.status == 1).length;
     final deletedCount = todos.where((Todo todo) => todo.status == 2).length;
-    final activeTodos = todos.where((Todo todo) => todo.status == 0).toList();
-    
-    // Maximum number of todos for the counter
-    const maxTodos = 20;
 
-    return Scaffold(
-      appBar: AppBar(
-        centerTitle: true,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(currentDate),
-            const SizedBox(width: 8),
-            const Text('To-Do'),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person_outline),
-            onPressed: () {
-              context.pushRoute(const ProfileWrapperRoute());
-            },
-          ),
-        ],
-      ),
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-            child: Row(
+    // Get the daily todo goal
+    final dailyTodoGoal = ref.watch(todoGoalProvider);
+
+    // Check if we should show celebration
+    final shouldCelebrate = ref
+        .watch(dailyGoalAchievementProvider.notifier)
+        .shouldShowCelebration(selectedDate);
+
+    // If we should celebrate, mark it as shown after the celebration completes
+    if (shouldCelebrate) {
+      debugPrint(
+          '🎉 GOAL ACHIEVED! Completed todos ($completedCount) >= Goal ($dailyTodoGoal)');
+    }
+
+    // Get todos for the selected date using the TodoDateFilterService
+    final activeTodos =
+        TodoDateFilterService.getTodosForDate(todos, selectedDate);
+
+    // Watch celebration state from provider
+    final showCelebration = shouldCelebrate;
+
+    return ConfettiCelebration(
+      isPlaying: showCelebration,
+      maxCycles: 2,
+      onComplete: () {
+        // Mark the celebration as shown when animation completes
+        if (showCelebration) {
+          ref
+              .read(dailyGoalAchievementProvider.notifier)
+              .markCelebrationShown(selectedDate);
+        }
+      },
+      child: ScaffoldMessenger(
+        child: Scaffold(
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          body: SafeArea(
+            child: Column(
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                // Header with date picker and profile icon
+                Padding(
+                  padding: const EdgeInsets.only(top: 8, left: 8, right: 8),
+                  child: Row(
                     children: [
-                      const Text('Deleted',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
-                      AnimatedCounter(
-                          count: deletedCount, total: maxTodos, color: Colors.grey),
+                      // SwipeableDatePicker takes most of the space
+                      const Expanded(
+                        child: SwipeableDatePicker(
+                          height: 70, // Slightly reduced height
+                          mainDateTextStyle: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                            letterSpacing: 0.5,
+                          ),
+                          adjacentDateTextStyle: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xB3000000), // Black with 70% opacity
+                            letterSpacing: 0.3,
+                          ),
+                          maxDaysForward: 7, // Limit to one week forward
+                        ),
+                      ),
+                      // Profile icon button
+                      Container(
+                        margin: const EdgeInsets.only(left: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.person_outline),
+                          onPressed: () {
+                            context.pushRoute(const ProfileWrapperRoute());
+                          },
+                          tooltip: 'Profile',
+                          iconSize: 26,
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                Column(
-                  children: [
-                    const Text('Completed',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
-                    AnimatedCounter(count: completedCount, total: maxTodos, color: Colors.teal),
-                  ],
+                const SizedBox(height: 4),
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Deleted',
+                                style: TextStyle(fontWeight: FontWeight.bold)),
+                            AnimatedCounter(
+                                count: deletedCount,
+                                total: dailyTodoGoal,
+                                color: Colors.grey),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        children: [
+                          const Text('Completed',
+                              style: TextStyle(fontWeight: FontWeight.bold)),
+                          AnimatedCounter(
+                              count: completedCount,
+                              total: dailyTodoGoal,
+                              color: completedCount >= dailyTodoGoal
+                                  ? Colors.amber
+                                  : Colors.teal),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: activeTodos.isEmpty
+                      ? const Center(child: Text('No active tasks'))
+                      : ListView.builder(
+                          itemCount: activeTodos.length,
+                          itemBuilder: (context, index) {
+                            final todo = activeTodos[index];
+                            // Find the original index in the full todos list
+                            return TodoListItem(
+                              todo: todo,
+                              onComplete: (todo) {
+                                // Store the completed todo for potential undo
+                                setState(() {
+                                  _lastCompletedTodo = todo;
+                                  _lastCompletedId = todo.id;
+                                  _showCompleteUndoButton = true;
+                                });
+
+                                // Count subtasks for completion counter
+                                final subtaskCount = todo.subtasks?.length ?? 0;
+                                final completionMessage = subtaskCount > 0
+                                    ? '"${todo.title}" and $subtaskCount subtasks marked as completed'
+                                    : '"${todo.title}" marked as completed';
+
+                                // Complete the todo
+                                ref
+                                    .read(todoListProvider.notifier)
+                                    .completeTodo(todo.id);
+
+                                // If there are subtasks, mark them all as completed too
+                                // This is just for the counter - they're already visually completed
+                                // when the parent is completed
+
+                                // Use Future.delayed to show the snackbar after the animation completes
+                                Future.delayed(
+                                    const Duration(milliseconds: 300), () {
+                                  if (context.mounted) {
+                                    NotificationService.showNotification(
+                                        completionMessage);
+                                  }
+                                });
+                              },
+                              onDelete: (todo) {
+                                // Store the deleted todo for potential undo
+                                setState(() {
+                                  _lastDeletedTodo = todo;
+                                  _lastDeletedId = todo.id;
+                                  _showDeleteUndoButton = true;
+                                });
+
+                                // Delete the todo
+                                ref
+                                    .read(todoListProvider.notifier)
+                                    .deleteTodo(todo.id);
+
+                                NotificationService.showNotification(
+                                    '"${todo.title}" moved to trash');
+                              },
+                            );
+                          },
+                        ),
                 ),
               ],
             ),
           ),
-          Expanded(
-            child: activeTodos.isEmpty
-                ? const Center(child: Text('No active tasks'))
-                : ListView.builder(
-                    itemCount: activeTodos.length,
-                    itemBuilder: (context, index) {
-                      final todo = activeTodos[index];
-                      // Find the original index in the full todos list
-                      final originalIndex = todos.indexWhere((t) => t.id == todo.id);
-                      
-                      return TodoListItem(
-                        todo: todo,
-                        index: originalIndex,
-                        onComplete: (todo, index) {
-                          // Store the completed todo for potential undo
-                          setState(() {
-                            _lastCompletedTodo = todo;
-                            _lastCompletedIndex = index;
-                            _showCompleteUndoButton = true;
-                          });
-                          
-                          ref.read(todoListProvider.notifier).completeTodo(index);
-                          
-                          // Use Future.delayed to show the snackbar after the animation completes
-                          Future.delayed(const Duration(milliseconds: 300), () {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('"${todo.title}" marked as completed'),
-                                ),
-                              );
-                            }
-                          });
-                        },
-                        onDelete: (todo, index) {
-                          // Store the deleted todo for potential undo
-                          setState(() {
-                            _lastDeletedTodo = todo;
-                            _lastDeletedIndex = index;
-                            _showDeleteUndoButton = true;
-                          });
-                          
-                          // Delete the todo
-                          ref.read(todoListProvider.notifier).deleteTodo(index);
-                          
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('"${todo.title}" moved to trash')),
-                          );
-                        },
+          floatingActionButton: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              // Undo button for completed todos
+              if (_showCompleteUndoButton)
+                UndoButton(
+                  label: 'Undo Complete',
+                  onPressed: () {
+                    if (_lastCompletedTodo != null &&
+                        _lastCompletedId != null) {
+                      // Create a copy of the todo with status set back to active
+                      final restoredTodo = _lastCompletedTodo!.copyWith(
+                        status: 0, // Set back to active
+                        endedOn: null, // Clear completion date
                       );
+
+                      // Update the todo
+                      ref.read(todoListProvider.notifier).updateTodo(
+                            _lastCompletedId!,
+                            restoredTodo,
+                          );
+
+                      // Hide the undo button
+                      setState(() {
+                        _showCompleteUndoButton = false;
+                        _lastCompletedTodo = null;
+                        _lastCompletedId = null;
+                      });
+
+                      NotificationService.showNotification(
+                          'Task marked as active');
+                    }
+                  },
+                  onDurationEnd: () {
+                    if (mounted) {
+                      setState(() {
+                        _showCompleteUndoButton = false;
+                        _lastCompletedTodo = null;
+                        _lastCompletedId = null;
+                      });
+                    }
+                  },
+                  // Use the same grey styling for consistency
+                  backgroundColor: Colors.grey[700],
+                ),
+
+              // Undo button for deleted todos
+              if (_showDeleteUndoButton)
+                UndoButton(
+                  label: 'Undo Delete',
+                  onPressed: () {
+                    if (_lastDeletedTodo != null && _lastDeletedId != null) {
+                      // Restore the deleted todo
+                      ref
+                          .read(todoListProvider.notifier)
+                          .restoreTodo(_lastDeletedId!);
+
+                      // Hide the undo button
+                      setState(() {
+                        _showDeleteUndoButton = false;
+                        _lastDeletedTodo = null;
+                        _lastDeletedId = null;
+                      });
+
+                      NotificationService.showNotification('Todo restored');
+                    }
+                  },
+                  onDurationEnd: () {
+                    if (mounted) {
+                      setState(() {
+                        _showDeleteUndoButton = false;
+                        _lastDeletedTodo = null;
+                        _lastDeletedId = null;
+                      });
+                    }
+                  },
+                ),
+              // Only show action buttons if no undo buttons are visible
+              if (!_showCompleteUndoButton && !_showDeleteUndoButton) ...[  
+                // Voice recording button - with unique hero tag
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: VoiceRecordingButton(
+                    heroTag: 'todosHomePageVoiceButton',
+                    onTodoCreated: (todo, transcription) {
+                      // Show a more detailed snackbar
+                      try {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Todo created from voice:'),
+                                Text(todo.title,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold)),
+                                if (todo.description != null &&
+                                    todo.description!.isNotEmpty)
+                                  Text(todo.description!,
+                                      style: const TextStyle(fontSize: 12)),
+                              ],
+                            ),
+                            duration: const Duration(seconds: 4),
+                          ),
+                        );
+                      } catch (e) {
+                        // Handle case where ScaffoldMessenger is not available
+                        debugPrint('Error showing SnackBar: $e');
+                      }
                     },
                   ),
+                ),
+                // Regular add button with unique hero tag
+                FloatingActionButton(
+                  heroTag: 'todosHomePageAddButton',
+                  onPressed: () {
+                    showTodoFormModal(context);
+                  },
+                  child: const Icon(Icons.add),
+                ),
+              ],
+            ],
           ),
-        ],
-      ),
-      floatingActionButton: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          // Undo button for completed todos
-          if (_showCompleteUndoButton)
-            UndoButton(
-              label: 'Undo Complete',
-              onPressed: () {
-                if (_lastCompletedTodo != null && _lastCompletedIndex != null) {
-                  // Create a copy of the todo with status set back to active
-                  final restoredTodo = Todo.withId(
-                    id: _lastCompletedTodo!.id,
-                    title: _lastCompletedTodo!.title,
-                    description: _lastCompletedTodo!.description,
-                    priority: _lastCompletedTodo!.priority,
-                    rollover: _lastCompletedTodo!.rollover,
-                    status: 0, // Set back to active
-                    createdAt: _lastCompletedTodo!.createdAt,
-                    endedOn: null, // Clear completion date
-                  );
-                  
-                  // Update the todo
-                  ref.read(todoListProvider.notifier).updateTodo(
-                    _lastCompletedIndex!,
-                    restoredTodo,
-                  );
-                  
-                  // Hide the undo button
-                  setState(() {
-                    _showCompleteUndoButton = false;
-                    _lastCompletedTodo = null;
-                    _lastCompletedIndex = null;
-                  });
-                  
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Task marked as active')),
-                  );
-                }
-              },
-              onDurationEnd: () {
-                if (mounted) {
-                  setState(() {
-                    _showCompleteUndoButton = false;
-                    _lastCompletedTodo = null;
-                    _lastCompletedIndex = null;
-                  });
-                }
-              },
-              // Use the same grey styling for consistency
-              backgroundColor: Colors.grey[700],
-            ),
-          
-          // Undo button for deleted todos
-          if (_showDeleteUndoButton)
-            UndoButton(
-              label: 'Undo Delete',
-              onPressed: () {
-                if (_lastDeletedTodo != null && _lastDeletedIndex != null) {
-                  // Restore the deleted todo
-                  ref.read(todoListProvider.notifier).restoreTodo(
-                        _lastDeletedIndex!,
-                        _lastDeletedTodo!,
-                      );
-                  
-                  // Hide the undo button
-                  setState(() {
-                    _showDeleteUndoButton = false;
-                    _lastDeletedTodo = null;
-                    _lastDeletedIndex = null;
-                  });
-                  
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Todo restored')),
-                  );
-                }
-              },
-              onDurationEnd: () {
-                if (mounted) {
-                  setState(() {
-                    _showDeleteUndoButton = false;
-                    _lastDeletedTodo = null;
-                    _lastDeletedIndex = null;
-                  });
-                }
-              },
-            ),
-          FloatingActionButton(
-            onPressed: () {
-              showTodoFormModal(context);
-            },
-            child: const Icon(Icons.add),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -247,13 +388,17 @@ class AnimatedCounter extends StatelessWidget {
   final int count;
   final int total;
   final Color color;
-  const AnimatedCounter({super.key, required this.count, required this.total, required this.color});
+  const AnimatedCounter(
+      {super.key,
+      required this.count,
+      required this.total,
+      required this.color});
 
   @override
   Widget build(BuildContext context) {
     // For deleted tasks, don't show the total
     final displayText = color == Colors.grey ? '$count' : '$count/$total';
-    
+
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 500),
       child: Text(
