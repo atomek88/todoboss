@@ -159,19 +159,24 @@ class CalendarHeatmap extends StatelessWidget {
         final completionRate = summary.completionRate;
         final deletionRate = summary.deletionRate;
         
+        // Ensure opacity values are within valid range (0.0 to 1.0)
+        final safeCompletionOpacity = 0.3 + (completionRate * 0.7).clamp(0.0, 0.7);
+        final safeDeletionOpacity = 0.3 + (deletionRate * 0.7).clamp(0.0, 0.7);
+        
         if (completionRate > 0 && deletionRate > 0) {
           // Blend colors if both rates are positive
+          final blendFactor = (deletionRate / (completionRate + deletionRate)).clamp(0.0, 1.0);
           cellColor = Color.lerp(
-            completedColor.withOpacity(0.3 + completionRate * 0.7),
-            deletedColor.withOpacity(0.3 + deletionRate * 0.7),
-            deletionRate / (completionRate + deletionRate),
+            completedColor.withOpacity(safeCompletionOpacity),
+            deletedColor.withOpacity(safeDeletionOpacity),
+            blendFactor,
           ) ?? emptyColor;
         } else if (completionRate > 0) {
           // Only completion rate is positive
-          cellColor = completedColor.withOpacity(0.3 + completionRate * 0.7);
+          cellColor = completedColor.withOpacity(safeCompletionOpacity);
         } else if (deletionRate > 0) {
           // Only deletion rate is positive
-          cellColor = deletedColor.withOpacity(0.3 + deletionRate * 0.7);
+          cellColor = deletedColor.withOpacity(safeDeletionOpacity);
         }
       }
     }
@@ -194,7 +199,7 @@ class CalendarHeatmap extends StatelessWidget {
               ? Border.all(color: Colors.blue, width: 2) 
               : null,
         ),
-        child: summary != null ? Center(
+        child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -206,7 +211,7 @@ class CalendarHeatmap extends StatelessWidget {
                   color: isToday ? Colors.blue : Colors.black54,
                 ),
               ),
-              if (summary.todoCompletedCount > 0 || summary.todoDeletedCount > 0)
+              if (summary != null && (summary.todoCompletedCount > 0 || summary.todoDeletedCount > 0))
                 Text(
                   '${summary.todoCompletedCount}/${summary.todoGoal > 0 ? summary.todoGoal : summary.todoCompletedCount + summary.todoDeletedCount}',
                   style: TextStyle(
@@ -215,15 +220,6 @@ class CalendarHeatmap extends StatelessWidget {
                   ),
                 ),
             ],
-          ),
-        ) : Center(
-          child: Text(
-            date.day.toString(),
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-              color: isToday ? Colors.blue : Colors.black38,
-            ),
           ),
         ),
       ),
@@ -268,7 +264,7 @@ class CalendarHeatmap extends StatelessWidget {
         
         weekDays.add({
           'date': currentDate,
-          'summary': summary ?? createDailySummary(date: currentDate),
+          'summary': summary,
         });
       }
       

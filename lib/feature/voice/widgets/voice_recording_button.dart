@@ -82,7 +82,12 @@ class VoiceRecordingButton extends ConsumerWidget {
               color: isError ? Colors.red.shade700 : Colors.blue.shade700,
             ),
             const SizedBox(width: 8),
-            Text(title),
+            Flexible(
+              child: Text(
+                title,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         content: Text(message),

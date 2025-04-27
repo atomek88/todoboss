@@ -35,7 +35,10 @@ class DailySummaryRepository {
   /// Wait for initialization to complete
   Future<void> get initialized => _initCompleter.future;
 
-  // No longer needed as we use the 'initialized' getter everywhere
+  /// Ensures the repository is initialized before performing operations
+  Future<void> _ensureInitialized() async {
+    await initialized;
+  }
 
   /// Get all daily summaries
   Future<List<DailySummary>> getAllDailySummaries() async {
@@ -102,7 +105,8 @@ class DailySummaryRepository {
       final normalizedDate = DateTime(date.year, date.month, date.day);
 
       // Query for the summary with this date
-      final summaryIsar = await _isar.collection<DailySummaryIsar>()
+      final summaryIsar = await _isar
+          .collection<DailySummaryIsar>()
           .filter()
           .dateEqualTo(normalizedDate)
           .findFirst();
@@ -183,7 +187,6 @@ class DailySummaryRepository {
           .findFirst();
 
       if (summaryIsar != null) {
-        // Use transaction to delete
         await _isar.writeTxn(() async {
           await _isar.collection<DailySummaryIsar>().delete(summaryIsar.id);
         });
@@ -200,17 +203,18 @@ class DailySummaryRepository {
   Future<bool> saveDailySummaries(List<DailySummary> summaries) async {
     await initialized;
 
+    await _ensureInitialized();
     try {
       final summaryIsars = summaries.map(DailySummaryIsar.fromDomain).toList();
 
-      // Use a transaction for batch save
       await _isar.writeTxn(() async {
         await _isar.collection<DailySummaryIsar>().putAll(summaryIsars);
       });
 
       return true;
     } catch (e) {
-      talker.error('[DailySummaryRepository] Error saving batch of summaries', e);
+      talker.error(
+          '[DailySummaryRepository] Error saving multiple daily summaries: $e');
       return false;
     }
   }

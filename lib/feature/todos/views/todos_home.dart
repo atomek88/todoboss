@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:todoApp/shared/navigation/app_router.gr.dart';
@@ -66,13 +67,14 @@ class _TodosHomePageState extends ConsumerState<TodosHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // Get all todos and the selected date
-    final todos = ref.watch(todoListProvider);
+    // Get filtered todos and the selected date
+    final filteredTodos = ref.watch(filteredTodosProvider);
     final selectedDate = ref.watch(selectedDateProvider);
-
-    // Filter todos by status for counters
-    final completedCount = todos.where((Todo todo) => todo.status == 1).length;
-    final deletedCount = todos.where((Todo todo) => todo.status == 2).length;
+    
+    // Get all todos for counters
+    final allTodos = ref.watch(todoListProvider);
+    final completedCount = allTodos.where((Todo todo) => todo.status == 1).length;
+    final deletedCount = allTodos.where((Todo todo) => todo.status == 2).length;
 
     // Get the daily todo goal
     final dailyTodoGoal = ref.watch(todoGoalProvider);
@@ -88,9 +90,8 @@ class _TodosHomePageState extends ConsumerState<TodosHomePage> {
           '🎉 GOAL ACHIEVED! Completed todos ($completedCount) >= Goal ($dailyTodoGoal)');
     }
 
-    // Get todos for the selected date using the TodoDateFilterService
-    final activeTodos =
-        TodoDateFilterService.getTodosForDate(todos, selectedDate);
+    // Filtered todos are already available from the provider
+    final activeTodos = filteredTodos;
 
     // Watch celebration state from provider
     final showCelebration = shouldCelebrate;
@@ -136,9 +137,42 @@ class _TodosHomePageState extends ConsumerState<TodosHomePage> {
                           maxDaysForward: 7, // Limit to one week forward
                         ),
                       ),
+                      // Today button
+                      AnimatedOpacity(
+                        opacity: ref.watch(selectedDateProvider.notifier).isToday ? 0.3 : 1.0,
+                        duration: const Duration(milliseconds: 200),
+                        child: Container(
+                          margin: const EdgeInsets.only(left: 8, right: 8),
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              // Do not allow pressing when already on today
+                              if (!ref.watch(selectedDateProvider.notifier).isToday) {
+                                // Reset to today
+                                debugPrint('📅 [TodosHome] Resetting date to today');
+                                ref.read(selectedDateProvider.notifier).setDate(DateTime.now());
+                                
+                                // Add a subtle haptic feedback for better UX
+                                HapticFeedback.lightImpact();
+                              }
+                            },
+                            icon: const Icon(Icons.today, size: 16),
+                            label: const Text('Today'),
+                            style: ElevatedButton.styleFrom(
+                              foregroundColor: Theme.of(context).primaryColor,
+                              backgroundColor: Colors.white,
+                              elevation: 2,
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      
                       // Profile icon button
                       Container(
-                        margin: const EdgeInsets.only(left: 8),
+                        margin: const EdgeInsets.only(left: 0),
                         decoration: BoxDecoration(
                           color: Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(12),

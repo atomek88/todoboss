@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:todoApp/shared/providers/selected_date_provider.dart';
 import '../models/todo.dart';
+import '../providers/todos_provider.dart';
 
 /// Service that provides filtering functionality for todos based on dates
 class TodoDateFilterService {
@@ -10,8 +12,9 @@ class TodoDateFilterService {
   /// 3. The TodoListItem is scheduled for that Day of Week derived from the selected day
   static List<Todo> getTodosForDate(
       List<Todo> allTodos, DateTime selectedDate) {
-    debugPrint('===== Filtering todos for date: ${selectedDate.toString()} =====');
-    debugPrint('Total todos in list: ${allTodos.length}');
+    // Clear logging header with emoji
+    debugPrint('🔍 ===== FILTERING TODOS FOR DATE: ${selectedDate.toString()} =====');
+    debugPrint('🔍 [TodoDateFilterService] Todos to filter: ${allTodos.length}');
 
     // Normalize the selected date to midnight for comparison
     final normalizedSelectedDate = DateTime(
@@ -22,13 +25,15 @@ class TodoDateFilterService {
 
     // Get the day of week (1-7 where 1 = Monday, 7 = Sunday) for the selected date
     final dayOfWeek = selectedDate.weekday;
-    debugPrint('Selected day of week: $dayOfWeek (1=Monday, 7=Sunday)');
+    debugPrint('🔍 [TodoDateFilterService] Selected day of week: $dayOfWeek (1=Monday, 7=Sunday)');
 
+    // Count active todos for debugging
+    final activeTodos = allTodos.where((todo) => todo.status == 0).toList();
+    debugPrint('🔍 [TodoDateFilterService] Active todos: ${activeTodos.length}');
+    
     // First, let's log all todos with their scheduled days
-    for (final todo in allTodos) {
-      if (todo.status == 0) { // Only log active todos
-        debugPrint('Todo: ${todo.title} - Created: ${todo.createdAt} - Rollover: ${todo.rollover} - Scheduled: ${todo.scheduled}');
-      }
+    for (final todo in activeTodos) {
+      debugPrint('🔍 [TodoDateFilterService] Todo: ${todo.title} - Created: ${todo.createdAt} - Status: ${todo.status} - Rollover: ${todo.rollover} - Scheduled: ${todo.scheduled}');
     }
     
     return allTodos.where((todo) {
@@ -90,15 +95,23 @@ final todoDateFilterServiceProvider = Provider<TodoDateFilterService>((ref) {
 });
 
 /// Provider that filters todos based on the selected date
-final filteredTodosProvider =
-    Provider.family<List<Todo>, DateTime>((ref, selectedDate) {
-  final allTodos = ref.watch(allTodosProvider);
-  return TodoDateFilterService.getTodosForDate(allTodos, selectedDate);
-});
-
-/// Provider for all todos (to be implemented or replaced with your actual todos provider)
-final allTodosProvider = Provider<List<Todo>>((ref) {
-  // This should be replaced with your actual todos provider
-  // For now, just returning an empty list as a placeholder
-  return [];
+final filteredTodosProvider = Provider<List<Todo>>((ref) {
+  // Using watch on both providers to ensure reactivity when either changes
+  final allTodos = ref.watch(todoListProvider);
+  final selectedDate = ref.watch(selectedDateProvider);
+  
+  // Comprehensive logging each time this provider rebuilds
+  debugPrint('📋 [FilteredTodosProvider] REBUILDING with date: $selectedDate');
+  debugPrint('📋 [FilteredTodosProvider] Total todos available: ${allTodos.length}');
+  
+  // Force the TodoDateFilterService to run and filter the todos
+  final filteredTodos = TodoDateFilterService.getTodosForDate(allTodos, selectedDate);
+  
+  // Log the results of the filtering
+  debugPrint('📋 [FilteredTodosProvider] Filtered result: ${filteredTodos.length} todos');
+  filteredTodos.forEach((todo) {
+    debugPrint('📋 [FilteredTodosProvider] Included: ${todo.title}');
+  });
+  
+  return filteredTodos;
 });

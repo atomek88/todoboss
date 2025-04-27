@@ -109,8 +109,7 @@ class StorageService {
 
   /// Public method to ensure initialization is complete
   static Future<void> ensureInitialized() async {
-    final service = StorageService();
-    await service.getIsar();
+    await initialize();
   }
 
   /// Helper method to save custom JSON data to SharedPreferences

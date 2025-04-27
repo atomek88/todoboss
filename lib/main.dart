@@ -25,11 +25,23 @@ void main() async {
   // Ensure Flutter is initialized
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Hive storage
-  await StorageService.initialize();
+  // Initialize storage service
+  try {
+    await StorageService.initialize();
+    talker.debug('Storage service initialized successfully');
+  } catch (e) {
+    talker.error('Failed to initialize storage service', e);
+  }
 
   // Run the app with ProviderScope
   runApp(ProviderScope(
+    overrides: [
+      // We pre-initialize the Isar instance to ensure it's ready before any widgets build
+      isarProvider.overrideWith((ref) async {
+        final storageService = StorageService();
+        return await storageService.getIsar();
+      }),
+    ],
     child: MyApp(
       launchTitle: 'Todo App',
     ),

@@ -3,13 +3,14 @@ import '../models/daily_summary.dart';
 import '../repositories/daily_summary_repository.dart';
 import '../../todos/providers/todos_provider.dart';
 import '../../todos/providers/todo_goal_provider.dart';
+import 'package:todoApp/core/storage/storage_service.dart';
 
 /// Repository provider
 /// Provider for the DailySummaryRepository
 final dailySummaryRepositoryProvider = Provider<DailySummaryRepository>((ref) {
-  final repository = DailySummaryRepository();
-  repository.initialize();
-  return repository;
+  // Get the storage service from its provider
+  final storageService = ref.watch(storageServiceProvider);
+  return DailySummaryRepository(storageService);
 });
 
 /// Provider for all daily summaries
@@ -38,7 +39,7 @@ final lastNWeeksSummariesProvider = FutureProvider.family<List<DailySummary>, in
 final dailySummaryByDateProvider =
     FutureProvider.family<DailySummary?, DateTime>((ref, date) async {
   final repository = ref.watch(dailySummaryRepositoryProvider);
-  return repository.getDailySummaryByDate(date);
+  return repository.getDailySummaryForDate(date);
 });
 
 /// Notifier for generating daily summaries

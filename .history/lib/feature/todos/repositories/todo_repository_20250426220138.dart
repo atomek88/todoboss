@@ -216,7 +216,7 @@ class TodoRepository {
       final todos = await getAllTodos();
 
       // Filter for scheduled todos
-      return todos.where((todo) => todo.isScheduled).toList();
+      return todos.where((todo) => todo.scheduled != null).toList();
     } catch (e) {
       talker.error('[TodoRepository] Error getting scheduled todos', e);
       return [];
@@ -227,7 +227,7 @@ class TodoRepository {
   Future<List<Todo>> getTodosScheduledForToday() async {
     try {
       // Get all todos
-      final todos = await getAllTodos();
+      final todos = await getTodos();
       final today = DateTime.now().weekday;
       return todos
           .where((todo) => todo.isScheduledForDay(today) && todo.status == 0)

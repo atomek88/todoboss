@@ -70,8 +70,7 @@ class _SwipeableDatePickerState extends ConsumerState<SwipeableDatePicker>
   late PageController _pageController;
 
   // The middle page index (representing today)
-  static const int _initialPage =
-      500; // Large number to allow "infinite" scrolling
+  static const int _initialPage = 500; // Large number to allow "infinite" scrolling
 
   // Animation controllers
   late AnimationController _transitionController;
@@ -81,8 +80,6 @@ class _SwipeableDatePickerState extends ConsumerState<SwipeableDatePicker>
 
   // Track if we're currently animating
   bool _isAnimating = false;
-
-  // For backward compatibility with existing code
 
   @override
   void initState() {
@@ -110,7 +107,10 @@ class _SwipeableDatePickerState extends ConsumerState<SwipeableDatePicker>
       if (currentDate.year != today.year ||
           currentDate.month != today.month ||
           currentDate.day != today.day) {
+        debugPrint('🗓 [SwipeableDatePicker] Initializing with today\'s date: ${today.toString()}');
         ref.read(selectedDateProvider.notifier).setDate(today);
+      } else {
+        debugPrint('🗓 [SwipeableDatePicker] Current date already set to today: ${today.toString()}');
       }
     });
   }
@@ -162,10 +162,11 @@ class _SwipeableDatePickerState extends ConsumerState<SwipeableDatePicker>
       HapticFeedback.mediumImpact();
     }
 
-    // Update the selected date
+    // Update the date FIRST to ensure proper reactivity
+    debugPrint('🗓 [SwipeableDatePicker] Triggering date change: $dayOffset days from $currentDate to $newDate');
     ref.read(selectedDateProvider.notifier).setDate(newDate);
 
-    // Animate to the new page
+    // Then animate the page view
     final targetPage = _initialPage + dayOffset;
     _pageController
         .animateToPage(
@@ -174,7 +175,9 @@ class _SwipeableDatePickerState extends ConsumerState<SwipeableDatePicker>
       curve: Curves.easeOutCubic,
     )
         .then((_) {
+      // Animation complete
       _isAnimating = false;
+      debugPrint('🗓 [SwipeableDatePicker] Animation complete, current date: ${ref.read(selectedDateProvider)}');
 
       // Reset page controller to middle to allow "infinite" scrolling
       if ((targetPage - _initialPage).abs() > 100) {
@@ -186,14 +189,24 @@ class _SwipeableDatePickerState extends ConsumerState<SwipeableDatePicker>
     _transitionController.forward(from: 0.0);
   }
 
-  // Format a date for display in full format (e.g., "April 24")
+  // Format a date for display in full format (e.g., "Mon, Apr 24")
   String _formatDateFull(DateTime date) {
-    return DateFormat('MMMM d').format(date);
+    final dayOfWeek = _getDayOfWeekShortcode(date);
+    final month = DateFormat('MMM').format(date);
+    final day = date.day.toString();
+    return "$dayOfWeek, $month $day";
   }
 
   // Format a date for display in abbreviated format (e.g., "Apr 23")
   String _formatDateAbbr(DateTime date) {
     return DateFormat('MMM d').format(date);
+  }
+  
+  // Get shortcode for day of week (e.g., "Mon", "Tue")
+  String _getDayOfWeekShortcode(DateTime date) {
+    final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    // weekday is 1-based (1 = Monday, 7 = Sunday)
+    return weekdays[date.weekday - 1];
   }
   
   // Check if date is within allowed range
@@ -227,171 +240,226 @@ class _SwipeableDatePickerState extends ConsumerState<SwipeableDatePicker>
 
     // Format date based on position
     final formattedDate =
-        isCenter ? _formatDateFull(date) : _formatDateAbbr(date);
+        isCenter ? "${_formatDateFull(date)}" : _formatDateAbbr(date);
 
-    // Choose text style based on position with enhanced perspective effect
-    final bool isAdjacent = distance < 1.0 && !isCenter; // Dates immediately adjacent to center
-    
-    final textStyle = isCenter
-        ? (widget.mainDateTextStyle ??
-            widget.dateTextStyle ??
-            const TextStyle(
-              fontSize: 28, // Larger font size for center date
-              fontWeight: FontWeight.bold,
-              color: Colors.black, // Black text on white background
-              letterSpacing: 0.5,
-              shadows: [Shadow(color: Colors.black12, blurRadius: 1, offset: Offset(0, 1))],
-            ))
-        : isAdjacent
-            ? (widget.adjacentDateTextStyle ??
-                TextStyle(
-                  fontSize: 20, // Larger for immediately adjacent dates
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black.withOpacity(0.7), // More visible adjacent dates
-                  letterSpacing: 0.3,
-                ))
-            : TextStyle(
-                fontSize: 16, // Smaller for dates further away
-                fontWeight: FontWeight.w400,
-                color: Colors.black.withOpacity(0.5),
-                letterSpacing: 0.2,
-              );
+    // Check if this is today's date
+    final isToday = _isToday(date);
 
     return Transform.scale(
       scale: scale,
       child: Opacity(
         opacity: opacity,
-        child: Center(
-          child: Text(
-            formattedDate,
-            style: textStyle,
-            textAlign: TextAlign.center,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Date text with optional badge for today
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min, // To prevent overflow
+              children: [
+                Flexible(
+                  child: Text(
+                    formattedDate,
+                    overflow: TextOverflow.ellipsis,
+                    style: isCenter
+                        ? widget.mainDateTextStyle ??
+                            widget.dateTextStyle ??
+                            TextStyle(
+                              fontSize: 22, // Slightly smaller
+                              fontWeight: FontWeight.bold,
+                              color: isToday
+                                  ? Theme.of(context).colorScheme.primary
+                                  : null,
+                            )
+                        : widget.adjacentDateTextStyle ??
+                            TextStyle(
+                              fontSize: 16, // Slightly smaller
+                              fontWeight: FontWeight.w400,
+                              color: Colors.grey.shade500,
+                            ),
+                  ),
+                ),
+                if (isToday && isCenter)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8.0),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8.0, vertical: 2.0),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'Today',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onPrimary,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Check if the given date is today
+  bool _isToday(DateTime date) {
+    final now = DateTime.now();
+    return date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
+  }
+
+  // Build tick marks below the date display
+  Widget _buildTickMarks() {
+    return Container(
+      height: 10,
+      margin: const EdgeInsets.only(top: 5),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          for (int i = -2; i <= 2; i++)
+            Container(
+              width: i == 0 ? 24 : 8,
+              height: i == 0 ? 4 : 2,
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              decoration: BoxDecoration(
+                color: i == 0
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.grey.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // Build the parallax gradient background
+  Widget _buildBackgroundGradient() {
+    // Get the parallax offset for background movement
+    final parallaxOffset = ref.watch(_parallaxOffsetProvider);
+
+    return AnimatedPositioned(
+      duration: const Duration(milliseconds: 0),
+      left: -30 - (parallaxOffset * 15), // Subtle parallax effect
+      right: -30 + (parallaxOffset * 15),
+      top: -20,
+      bottom: -20,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: widget.gradientColors ??
+                [
+                  Colors.blue.shade100.withOpacity(0.2),
+                  Colors.blue.shade50.withOpacity(0.1),
+                  Colors.blue.shade100.withOpacity(0.2),
+                ],
           ),
         ),
       ),
     );
   }
 
-  // Build tick marks for the date picker with enhanced visibility
-  Widget _buildTickMarks() {
-    return SizedBox(
-      height: 10, // Increased height for better visibility
-      width: double.infinity, // Ensure full width
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(15, (index) {
-          // Create evenly spaced tick marks with varying heights
-          final isCenter = index == 7; // Center tick
-          final isNearCenter = (index == 6 || index == 8); // Adjacent to center
-          
-          return Container(
-            width: isCenter ? 2 : (isNearCenter ? 1.5 : 1),
-            height: isCenter ? 8 : (isNearCenter ? 6 : 4),
-            margin: const EdgeInsets.symmetric(horizontal: 6),
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(isCenter ? 0.7 : (isNearCenter ? 0.5 : 0.3)),
-              borderRadius: BorderRadius.circular(0.5),
-            ),
-          );
-        }),
-      ),
-    );
+  // Handle swipe gestures with velocity awareness
+  void _handleSwipeGesture(double velocity) {
+    // Don't respond to tiny movements
+    if (velocity.abs() < 50) return;
+
+    // Determine direction and sensitivity
+    final direction = velocity > 0 ? -1 : 1; // Swipe right = previous day
+    var daysToJump = 1;
+
+    // Fast swipe - jump multiple days (reduced sensitivity)
+    if (velocity.abs() > 1500) {
+      daysToJump = math.min(
+          ((velocity.abs() - 1500) / 700).round() + 1,
+          widget.maxDaysJumpOnFastSwipe);
+    }
+
+    // Change the date with the calculated jump
+    _changeDate(direction * daysToJump);
   }
 
   @override
   Widget build(BuildContext context) {
-    // Get the current selected date
+    // Watch the selected date to make sure we rebuild when it changes
     final selectedDate = ref.watch(selectedDateProvider);
-    // We're not using parallax effect with the new design
-    // but keeping the provider for future enhancements
-
-    // Use white background instead of gradient
-    return Container(
+    
+    // Log the current date each build for debugging
+    debugPrint('🗓 [SwipeableDatePicker] Building with date: $selectedDate');
+    
+    return SizedBox(
       height: widget.height,
-      width: double.infinity, // Ensure full width to prevent overflow
-      decoration: const BoxDecoration(
-        color: Colors.white, // Plain white background
-      ),
       child: Stack(
-        alignment: Alignment.center,
         children: [
-          // Main content with PageView for swiping
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Date PageView
-              SizedBox(
-                height: widget.height - (widget.showTickMarks ? 20 : 0),
-                width: double.infinity, // Ensure full width to prevent overflow
-                child: GestureDetector(
-                  // Handle horizontal drag for date changes
-                  onHorizontalDragEnd: (details) {
-                    // Capture velocity for fast swipes
-                    _swipeVelocity = details.primaryVelocity ?? 0;
-
-                    // Determine direction and number of days to jump
-                    if (_swipeVelocity.abs() > 100) {
-                      final direction = _swipeVelocity > 0
-                          ? -1
-                          : 1; // Swipe right = previous day
-
-                      // Calculate days to jump based on velocity
-                      // Reduced sensitivity - require more velocity for multi-day jumps
-                      int daysToJump = 1;
-                      if (_swipeVelocity.abs() > 1500) { // Increased threshold
-                        // Fast swipe - jump multiple days
-                        daysToJump = math.min(
-                            ((_swipeVelocity.abs() - 1500) / 700).round() + 1, // Reduced sensitivity
-                            widget.maxDaysJumpOnFastSwipe);
-                      }
-
-                      _changeDate(direction * daysToJump);
-                    }
-                  },
-
-                  // Track swipe start for better gesture detection
-                  onHorizontalDragStart: (_) {
-                    _swipeVelocity = 0;
-                  },
-
-                  child: PageView.builder(
-                    controller: _pageController,
-                    itemBuilder: (context, index) => _buildDateItem(index),
-                    onPageChanged: (index) {
-                      // Update selected date when page changes
-                      final dayOffset = index - _initialPage;
-                      if (dayOffset != 0) {
-                        final newDate =
-                            selectedDate.add(Duration(days: dayOffset));
-                        ref
-                            .read(selectedDateProvider.notifier)
-                            .setDate(newDate);
-
-                        // Provide haptic feedback
-                        if (widget.enableHapticFeedback) {
-                          HapticFeedback.mediumImpact();
-                        }
-                      }
-                    },
+          _buildBackgroundGradient(),
+          
+          // Main content
+          Positioned.fill(
+            child: GestureDetector(
+              onHorizontalDragUpdate: (details) {
+                // Track velocity for fast swipes
+                _swipeVelocity = details.primaryDelta ?? 0;
+              },
+              onHorizontalDragEnd: (details) {
+                // Process swipe based on velocity
+                _handleSwipeGesture(details.primaryVelocity ?? 0);
+              },
+              child: PageView.builder(
+                controller: _pageController,
+                physics: const NeverScrollableScrollPhysics(), // We'll handle scrolling ourselves
+                itemCount: 1000, // Large number for "infinite" scrolling
+                itemBuilder: (context, index) => _buildDateItem(index),
+              ),
+            ),
+          ),
+          
+          // Button overlays for tapping left/right
+          Positioned.fill(
+            child: Row(
+              children: [
+                // Left button (previous day)
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => _changeDate(-1),
+                    behavior: HitTestBehavior.translucent,
+                    child: Container(color: Colors.transparent),
                   ),
                 ),
-              ),
-
-              // Tick marks below the dates with enhanced visibility
-              if (widget.showTickMarks)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: _buildTickMarks(),
+                
+                // Middle section (no action)
+                const Expanded(
+                  child: SizedBox(),
                 ),
-            ],
+                
+                // Right button (next day)
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => _changeDate(1),
+                    behavior: HitTestBehavior.translucent,
+                    child: Container(color: Colors.transparent),
+                  ),
+                ),
+              ],
+            ),
           ),
-
-          // Accessibility hint (semantics only)
-          Semantics(
-            label: "Date picker showing ${_formatDateFull(selectedDate)}",
-            hint: "Swipe left or right to change the day",
-            child: const SizedBox.expand(),
-          ),
+          
+          // Optional tick marks
+          if (widget.showTickMarks)
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: _buildTickMarks(),
+            ),
         ],
       ),
     );

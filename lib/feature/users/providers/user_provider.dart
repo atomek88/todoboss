@@ -45,7 +45,7 @@ class UserNotifier extends StateNotifier<UserModel?> {
 
   // Clear the current user (logout)
   Future<void> clearUser() async {
-    await _repository.deleteUser();
+    await _repository.clearUser();
     state = null;
   }
 

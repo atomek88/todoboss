@@ -13,7 +13,7 @@ final todoRepositoryProvider = Provider<TodoRepository>((ref) {
 // Provider for TodoList
 final todoListProvider = FutureProvider<List<Todo>>((ref) async {
   final repository = ref.watch(todoRepositoryProvider);
-  return repository.getTodos();
+  return repository.getAllTodos();
 });
 
 // Notifier for TodoList operations
@@ -27,7 +27,7 @@ class TodoListNotifier extends StateNotifier<AsyncValue<List<Todo>>> {
   Future<void> _loadTodos() async {
     state = const AsyncValue.loading();
     try {
-      final todos = await _repository.getTodos();
+      final todos = await _repository.getAllTodos();
       state = AsyncValue.data(todos);
     } catch (e, stack) {
       state = AsyncValue.error(e, stack);
@@ -163,8 +163,6 @@ final deletedTodosProvider = Provider<AsyncValue<List<Todo>>>((ref) {
 // TodoGoal Notifier
 class TodoGoalNotifier extends StateNotifier<int> {
   static const String _prefKey = 'todo_goal';
-  static const String _hiveBoxName = 'settings_box';
-  static const String _hiveKey = 'todo_goal';
   static const int _defaultGoal = 20;
 
   final StorageService _storageService;
@@ -174,34 +172,41 @@ class TodoGoalNotifier extends StateNotifier<int> {
   }
 
   Future<void> _loadGoal() async {
-    final jsonString = await _storageService.loadData(
-      prefKey: _prefKey,
-      hiveBoxName: _hiveBoxName,
-      hiveKey: _hiveKey,
-    );
-
-    if (jsonString != null) {
-      try {
-        final goal = int.parse(jsonString);
-        state = goal;
-      } catch (e) {
-        talker.error('[TodoGoalNotifier] Error parsing task goal', e);
+    try {
+      // Try to load from SharedPreferences first
+      final prefs = await _storageService.getSharedPreferences();
+      final goalFromPrefs = prefs.getInt(_prefKey);
+      
+      if (goalFromPrefs != null) {
+        state = goalFromPrefs;
+        return;
       }
+      
+      // If not in SharedPreferences, we'll try to use the default value
+      talker.debug('[TodoGoalNotifier] No goal found in preferences, using default: $_defaultGoal');
+      state = _defaultGoal;
+      
+      // Save the default value to preferences for future use
+      await updateGoal(_defaultGoal);
+    } catch (e) {
+      talker.error('[TodoGoalNotifier] Error loading task goal', e);
     }
   }
 
   Future<void> updateGoal(int goal) async {
     if (goal < 0) return;
 
-    final success = await _storageService.saveData(
-      prefKey: _prefKey,
-      hiveBoxName: _hiveBoxName,
-      hiveKey: _hiveKey,
-      jsonData: goal.toString(),
-    );
-
-    if (success) {
-      state = goal;
+    try {
+      // Save to SharedPreferences
+      final prefs = await _storageService.getSharedPreferences();
+      final success = await prefs.setInt(_prefKey, goal);
+      
+      if (success) {
+        state = goal;
+        talker.debug('[TodoGoalNotifier] Goal updated to: $goal');
+      }
+    } catch (e) {
+      talker.error('[TodoGoalNotifier] Error saving task goal', e);
     }
   }
 }

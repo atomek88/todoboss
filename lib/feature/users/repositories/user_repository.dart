@@ -5,21 +5,17 @@ import 'package:todoApp/feature/users/models/user_model.dart';
 
 class UserRepository {
   static const String _prefKey = 'user_data';
-  static const String _hiveBoxName = 'users_box';
-  static const String _hiveKey = 'user_data';
 
   final StorageService _storageService;
 
   UserRepository(this._storageService);
 
-  // Save user to both SharedPreferences and Hive
+  /// Save user to SharedPreferences
   Future<bool> saveUser(UserModel user) async {
     try {
       final userJson = jsonEncode(user.toJson());
       return await _storageService.saveData(
         prefKey: _prefKey,
-        hiveBoxName: _hiveBoxName,
-        hiveKey: _hiveKey,
         jsonData: userJson,
       );
     } catch (e) {
@@ -28,13 +24,11 @@ class UserRepository {
     }
   }
 
-  // Get user with fallback mechanism
+  /// Get user from SharedPreferences
   Future<UserModel?> getUser() async {
     try {
       final jsonString = await _storageService.loadData(
         prefKey: _prefKey,
-        hiveBoxName: _hiveBoxName,
-        hiveKey: _hiveKey,
       );
 
       if (jsonString == null) {
@@ -49,16 +43,15 @@ class UserRepository {
     }
   }
 
-  // Delete user from both storage systems
-  Future<bool> deleteUser() async {
+  /// Clear user data from storage
+  Future<bool> clearUser() async {
     try {
-      return await _storageService.deleteData(
+      await _storageService.deleteData(
         prefKey: _prefKey,
-        hiveBoxName: _hiveBoxName,
-        hiveKey: _hiveKey,
       );
+      return true;
     } catch (e) {
-      talker.error('[UserRepository] Error deleting user', e);
+      talker.error('[UserRepository] Error clearing user data', e);
       return false;
     }
   }

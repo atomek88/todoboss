@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart';
 
 /// Provider that stores the currently selected date for filtering todos
 class SelectedDateNotifier extends StateNotifier<DateTime> {
@@ -12,17 +13,29 @@ class SelectedDateNotifier extends StateNotifier<DateTime> {
   /// Set the selected date
   void setDate(DateTime date) {
     // Normalize the date to midnight to ensure consistent date comparison
-    state = _normalizeDate(date);
+    final normalizedDate = _normalizeDate(date);
+    
+    // Only update if the date has actually changed
+    if (normalizedDate != state) {
+      debugPrint('🗓 [SelectedDateNotifier] Date changing: ${state.toString()} → ${normalizedDate.toString()}');
+      state = normalizedDate;
+    } else {
+      debugPrint('🗓 [SelectedDateNotifier] Ignoring duplicate date update: ${date.toString()}');
+    }
   }
 
   /// Move to the previous day
   void previousDay() {
-    state = state.subtract(const Duration(days: 1));
+    final newDate = state.subtract(const Duration(days: 1));
+    debugPrint('🗓 [SelectedDateNotifier] Moving to previous day: ${state.toString()} → ${newDate.toString()}');
+    state = newDate;
   }
 
   /// Move to the next day
   void nextDay() {
-    state = state.add(const Duration(days: 1));
+    final newDate = state.add(const Duration(days: 1));
+    debugPrint('🗓 [SelectedDateNotifier] Moving to next day: ${state.toString()} → ${newDate.toString()}');
+    state = newDate;
   }
 
   /// Check if the selected date is today

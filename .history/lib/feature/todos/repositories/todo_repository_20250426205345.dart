@@ -1,8 +1,7 @@
 import 'package:todoApp/core/globals.dart';
-import 'dart:async';
+import 'package:todoApp/core/storage/storage_service.dart';
 import 'package:todoApp/feature/todos/models/todo.dart';
 import 'package:todoApp/feature/todos/models/todo_isar.dart';
-import 'package:todoApp/core/storage/storage_service.dart';
 import 'package:isar/isar.dart';
 
 class TodoRepository {
@@ -10,40 +9,21 @@ class TodoRepository {
       'todos_last_sync'; // For tracking last sync time
 
   final StorageService _storageService;
-  Isar? _isar;
-  final _initCompleter = Completer<void>();
-  bool _isInitialized = false;
+  late final Isar _isar;
 
   TodoRepository(this._storageService) {
-    _initialize();
+    _isar = StorageService.isar;
   }
-
-  /// Initialize the repository and get the Isar instance
-  Future<void> _initialize() async {
-    try {
-      if (_isInitialized) return;
-      _isar = await _storageService.getIsar();
-      _isInitialized = true;
-      _initCompleter.complete();
-    } catch (e) {
-      talker.error('[TodoRepository] Error initializing repository', e);
-      _initCompleter.completeError(e);
-    }
-  }
-
-  /// Wait for initialization to complete
-  Future<void> get initialized => _initCompleter.future;
 
   // Save multiple todos to Isar database
   Future<bool> saveTodos(List<Todo> todos) async {
     try {
-      await initialized;
       // Convert domain models to Isar models
       final todoIsars = todos.map(TodoIsar.fromDomain).toList();
 
       // Save to Isar in a transaction
-      await _isar!.writeTxn(() async {
-        await _isar!.collection<TodoIsar>().putAll(todoIsars);
+      await _isar.writeTxn(() async {
+        await _isar.collection<TodoIsar>().putAll(todoIsars);
       });
 
       // Track sync time in SharedPreferences
@@ -58,10 +38,10 @@ class TodoRepository {
   }
 
   // Get all todos from Isar database
-  Future<List<Todo>> getAllTodos() async {
+  Future<List<Todo>> getTodos() async {
     try {
-      await initialized;
-      final todoIsars = await _isar!.collection<TodoIsar>().where().findAll();
+      // Query all todos from Isar
+      final todoIsars = await _isar.collection<TodoIsar>().where().findAll();
       final todos = todoIsars.map((todoIsar) => todoIsar.toDomain()).toList();
 
       if (todos.isEmpty) {
@@ -88,7 +68,7 @@ class TodoRepository {
 
       return todos;
     } catch (e) {
-      talker.error('[TodoRepository] Error getting all todos', e);
+      talker.error('[TodoRepository] Error getting todos', e);
       return [];
     }
   }
@@ -96,11 +76,10 @@ class TodoRepository {
   // Add a new todo
   Future<bool> addTodo(Todo todo) async {
     try {
-      await initialized;
       final todoIsar = TodoIsar.fromDomain(todo);
 
-      await _isar!.writeTxn(() async {
-        await _isar!.collection<TodoIsar>().put(todoIsar);
+      await _isar.writeTxn(() async {
+        await _isar.collection<TodoIsar>().put(todoIsar);
       });
 
       return true;
@@ -113,14 +92,12 @@ class TodoRepository {
   // Update an existing todo
   Future<bool> updateTodo(Todo updatedTodo) async {
     try {
-      await initialized;
-      // Convert to Isar model
       final todoIsar = TodoIsar.fromDomain(updatedTodo);
 
       // Find existing todo by UUID
-      final existingTodo = await _isar!
+      final existingTodo = await _isar
           .collection<TodoIsar>()
-          .filter()
+          .where()
           .uuidEqualTo(updatedTodo.id)
           .findFirst();
 
@@ -128,8 +105,8 @@ class TodoRepository {
         // Preserve Isar ID for update
         todoIsar.id = existingTodo.id;
 
-        await _isar!.writeTxn(() async {
-          await _isar!.collection<TodoIsar>().put(todoIsar);
+        await _isar.writeTxn(() async {
+          await _isar.collection<TodoIsar>().put(todoIsar);
         });
 
         return true;
@@ -145,17 +122,13 @@ class TodoRepository {
   // Delete a todo
   Future<bool> deleteTodo(String id) async {
     try {
-      await initialized;
       // Find by UUID
-      final todoIsar = await _isar!
-          .collection<TodoIsar>()
-          .filter()
-          .uuidEqualTo(id)
-          .findFirst();
+      final todoIsar =
+          await _isar.collection<TodoIsar>().where().uuid(id).findFirst();
 
       if (todoIsar != null) {
-        await _isar!.writeTxn(() async {
-          await _isar!.collection<TodoIsar>().delete(todoIsar.id);
+        await _isar.writeTxn(() async {
+          await _isar.collection<TodoIsar>().delete(todoIsar.id);
         });
         return true;
       }
@@ -170,7 +143,7 @@ class TodoRepository {
   // Get a todo by ID
   Future<Todo?> getTodoById(String id) async {
     try {
-      final todos = await getAllTodos();
+      final todos = await getTodos();
       return todos.firstWhere(
         (todo) => todo.id == id,
         orElse: () => throw Exception('Todo not found'),
@@ -184,10 +157,7 @@ class TodoRepository {
   // Get todos by status
   Future<List<Todo>> getTodosByStatus(int status) async {
     try {
-      // Get all todos first
-      final todos = await getAllTodos();
-
-      // Filter by status
+      final todos = await getTodos();
       return todos.where((todo) => todo.status == status).toList();
     } catch (e) {
       talker.error('[TodoRepository] Error getting todos by status', e);
@@ -198,11 +168,8 @@ class TodoRepository {
   // Get todos with subtasks
   Future<List<Todo>> getTodosWithSubtasks() async {
     try {
-      // Get all todos
-      final todos = await getAllTodos();
-
-      // Filter for todos with subtasks
-      return todos.where((todo) => todo.subtasks?.isNotEmpty ?? false).toList();
+      final todos = await getTodos();
+      return todos.where((todo) => todo.hasSubtasks).toList();
     } catch (e) {
       talker.error('[TodoRepository] Error getting todos with subtasks', e);
       return [];
@@ -212,10 +179,7 @@ class TodoRepository {
   // Get scheduled todos
   Future<List<Todo>> getScheduledTodos() async {
     try {
-      // Get all todos
-      final todos = await getAllTodos();
-
-      // Filter for scheduled todos
+      final todos = await getTodos();
       return todos.where((todo) => todo.isScheduled).toList();
     } catch (e) {
       talker.error('[TodoRepository] Error getting scheduled todos', e);
@@ -226,8 +190,7 @@ class TodoRepository {
   // Get todos scheduled for today
   Future<List<Todo>> getTodosScheduledForToday() async {
     try {
-      // Get all todos
-      final todos = await getAllTodos();
+      final todos = await getTodos();
       final today = DateTime.now().weekday;
       return todos
           .where((todo) => todo.isScheduledForDay(today) && todo.status == 0)

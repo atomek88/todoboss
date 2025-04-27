@@ -63,15 +63,15 @@ class UserNotifier extends StateNotifier<AsyncValue<UserModel?>> {
     }
   }
   
-  Future<void> deleteUser() async {
+  Future<void> clearUser() async {
     state = const AsyncValue.loading();
     try {
-      final success = await _repository.deleteUser();
+      final success = await _repository.clearUser();
       
       if (success) {
         state = const AsyncValue.data(null);
       } else {
-        state = AsyncValue.error('Failed to delete user', StackTrace.current);
+        state = AsyncValue.error('Failed to clear user data', StackTrace.current);
       }
     } catch (e, stack) {
       state = AsyncValue.error(e, stack);

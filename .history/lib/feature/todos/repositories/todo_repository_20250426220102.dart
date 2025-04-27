@@ -182,7 +182,7 @@ class TodoRepository {
   }
 
   // Get todos by status
-  Future<List<Todo>> getTodosByStatus(int status) async {
+  Future<List<Todo>> getTodosByStatus(TodoStatus status) async {
     try {
       // Get all todos first
       final todos = await getAllTodos();
@@ -202,7 +202,7 @@ class TodoRepository {
       final todos = await getAllTodos();
 
       // Filter for todos with subtasks
-      return todos.where((todo) => todo.subtasks?.isNotEmpty ?? false).toList();
+      return todos.where((todo) => todo.subtasks!.isNotEmpty).toList();
     } catch (e) {
       talker.error('[TodoRepository] Error getting todos with subtasks', e);
       return [];
@@ -216,7 +216,7 @@ class TodoRepository {
       final todos = await getAllTodos();
 
       // Filter for scheduled todos
-      return todos.where((todo) => todo.isScheduled).toList();
+      return todos.where((todo) => todo.scheduled != null).toList();
     } catch (e) {
       talker.error('[TodoRepository] Error getting scheduled todos', e);
       return [];
@@ -226,8 +226,7 @@ class TodoRepository {
   // Get todos scheduled for today
   Future<List<Todo>> getTodosScheduledForToday() async {
     try {
-      // Get all todos
-      final todos = await getAllTodos();
+      final todos = await getTodos();
       final today = DateTime.now().weekday;
       return todos
           .where((todo) => todo.isScheduledForDay(today) && todo.status == 0)
