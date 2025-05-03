@@ -62,12 +62,18 @@ class TodoIsar {
 
     // Convert subtasks if available
     if (todo.subtasks != null && todo.subtasks!.isNotEmpty) {
-      // Properly encode subtasks as JSON strings
-      todoIsar.subtasks = todo.subtasks!
-          .map((subtask) => jsonEncode(subtask.toJson()))
-          .toList();
-      
-      debugPrint('📦 [TodoIsar] Encoded ${todo.subtasks!.length} subtasks for ${todo.title}');
+      try {
+        // Properly encode subtasks as JSON strings
+        todoIsar.subtasks = todo.subtasks!
+            .map((subtask) => jsonEncode(subtask.toJson()))
+            .toList();
+        
+        debugPrint('📦 [TodoIsar] Encoded ${todo.subtasks!.length} subtasks for ${todo.title}');
+      } catch (e) {
+        debugPrint('📦 [TodoIsar] Error encoding subtasks: $e');
+        // Set empty list on error
+        todoIsar.subtasks = [];
+      }
     }
 
     return todoIsar;
@@ -82,21 +88,27 @@ class TodoIsar {
     List<Todo>? domainSubtasks;
     if (subtasks.isNotEmpty) {
       try {
-        domainSubtasks = subtasks.map((subtaskJson) {
-          try {
-            // Properly decode the JSON string
-            final Map<String, dynamic> jsonMap = jsonDecode(subtaskJson);
-            return Todo.fromJson(jsonMap);
-          } catch (e) {
-            debugPrint('📦 [TodoIsar] Error parsing individual subtask: $e');
-            // Skip this subtask
-            return null;
-          }
-        })
-        .where((subtask) => subtask != null) // Filter out null subtasks
-        .cast<Todo>() // Cast to correct type
-        .toList();
+        final parsedSubtasks = <Todo>[];
         
+        for (final subtaskJson in subtasks) {
+          try {
+            // Verify we have a valid JSON string (must start with {)
+            if (subtaskJson.trim().startsWith('{')) {
+              // Properly decode the JSON string
+              final Map<String, dynamic> jsonMap = jsonDecode(subtaskJson);
+              final subtask = Todo.fromJson(jsonMap);
+              parsedSubtasks.add(subtask);
+              debugPrint('📦 [TodoIsar] Successfully parsed subtask: ${subtask.title}');
+            } else {
+              debugPrint('📦 [TodoIsar] Invalid JSON format for subtask: $subtaskJson');
+            }
+          } catch (e) {
+            debugPrint('📦 [TodoIsar] Error parsing individual subtask: $e\nJSON: $subtaskJson');
+            // Skip this subtask
+          }
+        }
+        
+        domainSubtasks = parsedSubtasks;
         debugPrint('📦 [TodoIsar] Successfully parsed ${domainSubtasks.length} subtasks');
       } catch (e) {
         debugPrint('📦 [TodoIsar] Error parsing subtasks collection: $e');

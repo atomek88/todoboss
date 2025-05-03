@@ -14,7 +14,7 @@ class UndoButton extends StatelessWidget {
     this.label = 'Undo',
     this.icon = Icons.undo,
     this.backgroundColor,
-    this.duration = const Duration(seconds: 5),
+    this.duration = const Duration(seconds: 2),
     required this.onDurationEnd,
   }) : super(key: key);
 

@@ -15,10 +15,20 @@ class RecurringTodosPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Get all todos
     final todos = ref.watch(todoListProvider);
-
+    
+    // Debug output to understand what's happening with scheduled todos
+    debugPrint('📆 [RecurringTodosPage] Total todos: ${todos.length}');
+    todos.forEach((todo) {
+      debugPrint('📆 [RecurringTodosPage] Todo: ${todo.title}, scheduled: ${todo.scheduled}, isScheduled: ${todo.isScheduled}');
+    });
+    
     // Filter to only show scheduled todos that are active (status = 0)
-    final recurringTodos =
-        todos.where((todo) => todo.isScheduled && todo.status == 0).toList();
+    final recurringTodos = todos.where((todo) => 
+      todo.scheduled.isNotEmpty && // Check if scheduled has items
+      todo.status == 0 // Only active todos
+    ).toList();
+    
+    debugPrint('📆 [RecurringTodosPage] Found ${recurringTodos.length} recurring todos');
 
     return Scaffold(
       appBar: AppBar(

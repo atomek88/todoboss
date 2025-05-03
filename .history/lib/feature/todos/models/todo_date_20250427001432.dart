@@ -1,0 +1,160 @@
+import 'package:flutter/foundation.dart';
+import 'todo.dart';
+
+/// A class representing a day's todo statistics
+class TodoDate {
+  final String id;  // DDMMYYYY format
+  final DateTime date;
+  final int taskGoal;
+  final int completedTodosCount;
+  final int deletedTodosCount;
+  final List<String> todoIds; // IDs of todos for this date
+  final String? summary; // Optional summary text for the day
+  
+  const TodoDate({
+    required this.id,
+    required this.date,
+    this.taskGoal = 0,
+    this.completedTodosCount = 0,
+    this.deletedTodosCount = 0,
+    this.todoIds = const [],
+    this.summary,
+  });
+  
+  // Helper to create a TodoDate from a DateTime
+  factory TodoDate.fromDate(DateTime date, {int taskGoal = 0}) {
+    final id = _dateToId(date);
+    return TodoDate(
+      id: id,
+      date: DateTime(date.year, date.month, date.day),
+      taskGoal: taskGoal,
+    );
+  }
+  
+  // Format date as DDMMYYYY
+  static String _dateToId(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}${date.month.toString().padLeft(2, '0')}${date.year}';
+  }
+  
+  // Parse date from DDMMYYYY
+  static DateTime idToDate(String id) {
+    final day = int.parse(id.substring(0, 2));
+    final month = int.parse(id.substring(2, 4));
+    final year = int.parse(id.substring(4));
+    return DateTime(year, month, day);
+  }
+  
+  // Create a TodoDate from JSON data
+  factory TodoDate.fromJson(Map<String, dynamic> json) {
+    return TodoDate(
+      id: json['id'] as String,
+      date: DateTime.parse(json['date'] as String),
+      taskGoal: json['taskGoal'] as int? ?? 0,
+      completedTodosCount: json['completedTodosCount'] as int? ?? 0,
+      deletedTodosCount: json['deletedTodosCount'] as int? ?? 0,
+      todoIds: (json['todoIds'] as List<dynamic>?)?.map((e) => e as String).toList() ?? [],
+      summary: json['summary'] as String?,
+    );
+  }
+  
+  // Convert to JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'date': date.toIso8601String(),
+      'taskGoal': taskGoal,
+      'completedTodosCount': completedTodosCount,
+      'deletedTodosCount': deletedTodosCount,
+      'todoIds': todoIds,
+      'summary': summary,
+    };
+  }
+  
+  // Clone with modifications
+  TodoDate copyWith({
+    String? id,
+    DateTime? date,
+    int? taskGoal,
+    int? completedTodosCount,
+    int? deletedTodosCount,
+    List<String>? todoIds,
+    String? summary,
+  }) {
+    return TodoDate(
+      id: id ?? this.id,
+      date: date ?? this.date,
+      taskGoal: taskGoal ?? this.taskGoal,
+      completedTodosCount: completedTodosCount ?? this.completedTodosCount,
+      deletedTodosCount: deletedTodosCount ?? this.deletedTodosCount,
+      todoIds: todoIds ?? this.todoIds,
+      summary: summary,
+    );
+  }
+  
+  // Check if this TodoDate is for today
+  bool get isToday {
+    final now = DateTime.now();
+    return date.year == now.year && 
+           date.month == now.month && 
+           date.day == now.day;
+  }
+  
+  // Check if this TodoDate is in the past
+  bool get isPast {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return date.isBefore(today);
+  }
+  
+  // Check if this TodoDate is in the future
+  bool get isFuture {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return date.isAfter(today);
+  }
+  
+  // Get completion percentage
+  double get completionPercentage {
+    if (taskGoal <= 0) return 0.0;
+    return (completedTodosCount / taskGoal) * 100;
+  }
+  
+  // Generate a summary of the day's activity
+  String generateSummary(List<Todo> todos) {
+    final activeTodos = todos.where((todo) => todo.status == 0).length;
+    
+    return 'Completed $completedTodosCount/${todos.length} tasks. '
+           '${deletedTodosCount > 0 ? 'Deleted $deletedTodosCount tasks. ' : ''}'
+           '${taskGoal > 0 ? 'Daily goal: $completedTodosCount/$taskGoal (${completionPercentage.toStringAsFixed(0)}%). ' : ''}'
+           '${activeTodos > 0 ? '$activeTodos tasks remaining.' : 'All tasks completed!'}';
+  }
+  
+  // Add a todo ID to this date
+  TodoDate addTodoId(String todoId) {
+    if (todoIds.contains(todoId)) return this;
+    return copyWith(todoIds: [...todoIds, todoId]);
+  }
+  
+  // Remove a todo ID from this date
+  TodoDate removeTodoId(String todoId) {
+    if (!todoIds.contains(todoId)) return this;
+    return copyWith(todoIds: todoIds.where((id) => id != todoId).toList());
+  }
+  
+  // Update counters based on todos
+  TodoDate updateCounters(List<Todo> todos) {
+    final completed = todos.where((todo) => todo.status == 1).length;
+    final deleted = todos.where((todo) => todo.status == 2).length;
+    
+    return copyWith(
+      completedTodosCount: completed,
+      deletedTodosCount: deleted,
+      summary: generateSummary(todos),
+    );
+  }
+  
+  @override
+  String toString() {
+    return 'TodoDate(id: $id, date: $date, goal: $taskGoal, completed: $completedTodosCount, deleted: $deletedTodosCount)';
+  }
+}

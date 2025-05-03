@@ -134,6 +134,47 @@ class _TodoFormModalState extends ConsumerState<TodoFormModal> {
     _saveChanges();
   }
 
+  // Create and save a new todo
+  void _saveTodo() {
+    // For new todos, create a new todo if title is not empty
+    if (widget.todo == null) {
+      if (titleController.text.isNotEmpty) {
+        final todoType = ref.read(todoTypeProvider);
+        
+        // Get values based on todo type
+        final bool rolloverState;
+        final Set<int> scheduledDays;
+        
+        if (todoType == TodoType.scheduled) {
+          rolloverState = false; // Scheduled todos should always have rollover=false
+          scheduledDays = ref.read(todoScheduledDaysProvider);
+        } else {
+          rolloverState = ref.read(todoRolloverProvider);
+          scheduledDays = {};
+        }
+
+        // Build the todo based on type
+        final newTodo = Todo.create(
+          title: titleController.text,
+          description: descriptionController.text,
+          priority: priority,
+          rollover: rolloverState,
+          scheduled: scheduledDays,
+        );
+
+        // Add the new todo - only call this once
+        ref.read(todoListProvider.notifier).addTodo(newTodo);
+        talker.debug('[TodoFormModal] Created new todo: ${newTodo.title} with scheduled days: ${scheduledDays}');
+      }
+    } else {
+      // For existing todos, just make sure the latest changes are saved
+      _saveChanges();
+    }
+
+    // Close the modal
+    Navigator.of(context).pop();
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.todo != null;
@@ -161,7 +202,8 @@ class _TodoFormModalState extends ConsumerState<TodoFormModal> {
     });
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      padding: const EdgeInsets.fromLTRB(
+          16, 8, 16, 0), // Remove bottom padding for buttons
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -178,6 +220,7 @@ class _TodoFormModalState extends ConsumerState<TodoFormModal> {
               ),
             ),
           ),
+
           // Title and Todo Type Selector
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -187,16 +230,32 @@ class _TodoFormModalState extends ConsumerState<TodoFormModal> {
                 style:
                     const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              // Only show the rollover icon for default todos
-              if (todoType == TodoType.default_todo)
-                SquareAppIcon(
-                  iconAsset: 'assets/icons/rock-hill.png',
-                  activationProvider: todoRolloverProvider,
-                  size: 40.0,
-                ),
+              Row(
+                children: [
+                  Text(
+                    'Rollover:',
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: ref.watch(todoRolloverProvider)
+                            ? Colors.green
+                            : Colors.grey),
+                  ),
+                  const SizedBox(width: 10),
+                  // Only show the rollover icon for default todos
+                  if (todoType == TodoType.default_todo)
+                    SquareAppIcon(
+                      iconAsset: 'assets/icons/rock-hill.png',
+                      activationProvider: todoRolloverProvider,
+                      size: 40.0,
+                    ),
+                ],
+              ),
             ],
           ),
+
           const SizedBox(height: 12),
+
           // Form fields in a scrollable container
           Expanded(
             child: ListView(
@@ -208,116 +267,139 @@ class _TodoFormModalState extends ConsumerState<TodoFormModal> {
                   decoration: InputDecoration(
                     hintText: 'Title',
                     hintStyle: TextStyle(color: Colors.grey.shade500),
-                    contentPadding: const EdgeInsets.symmetric(
-                        vertical: 12, horizontal: 16),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
                     ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Colors.blueAccent),
-                    ),
-                    filled: true,
-                    fillColor: Colors.grey.shade50,
                   ),
-                  autofocus: true,
+                  style: const TextStyle(
+                    fontSize: 16,
+                  ),
                 ),
-                const SizedBox(height: 12),
+
+                const SizedBox(height: 16),
+
                 TextField(
                   controller: descriptionController,
                   decoration: InputDecoration(
-                    hintText: 'Description',
+                    hintText: 'Description (optional)',
                     hintStyle: TextStyle(color: Colors.grey.shade500),
-                    contentPadding: const EdgeInsets.symmetric(
-                        vertical: 12, horizontal: 16),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
                     ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Colors.blueAccent),
-                    ),
-                    filled: true,
-                    fillColor: Colors.grey.shade50,
                   ),
-                  maxLines: 2,
+                  style: const TextStyle(
+                    fontSize: 16,
+                  ),
+                  maxLines: 4,
                 ),
-                const SizedBox(height: 12),
-                // Priority slider
+
+                const SizedBox(height: 24),
+
+                // Priority slider with integrated header
                 PrioritySlider(
                   priority: priority,
                   onChanged: _onPriorityChanged,
+                  showHeader: true,
                 ),
+
                 const SizedBox(height: 12),
-                // Show appropriate controls based on todo type
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16.0),
-                  child: Column(
+
+                // Day selector for scheduled todos
+                if (todoType == TodoType.scheduled)
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // For default todos, show rollover toggle
-                      if (todoType == TodoType.default_todo)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 16.0),
-                          child: Row(
-                            children: [
-                              const Text(
-                                'Rollover status: ',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              Text(
-                                ref.watch(todoRolloverProvider)
-                                    ? 'Enabled'
-                                    : 'Disabled',
-                                style: TextStyle(
-                                    color: ref.watch(todoRolloverProvider)
-                                        ? Colors.green
-                                        : Colors.grey),
-                              ),
-                              const Spacer(),
-                              SquareAppIcon(
-                                iconAsset: 'assets/icons/rock-hill.png',
-                                activationProvider: todoRolloverProvider,
-                                size: 30.0,
-                              ),
-                            ],
-                          ),
+                      Text(
+                        'Select days:',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey.shade800,
                         ),
-                      // Day selector for scheduled todos
-                      if (todoType == TodoType.scheduled)
-                        DaySelector(
-                          selectedDays: ref.watch(todoScheduledDaysProvider),
-                          onDaysChanged: (days) {
-                            ref.read(todoScheduledDaysProvider.notifier).state =
-                                days;
-                          },
-                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      DaySelector(
+                        selectedDays: ref.watch(todoScheduledDaysProvider),
+                        onDaysChanged: (days) {
+                          ref.read(todoScheduledDaysProvider.notifier).state =
+                              days;
+                        },
+                      ),
                     ],
                   ),
-                ),
+
+                // Add some bottom spacing after form
+                const SizedBox(height: 6),
               ],
             ),
           ),
-          const SizedBox(height: 12),
-          // Note about auto-saving
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16.0),
-            child: Center(
-              child: Text(
-                isEditing
-                    ? 'Changes are saved automatically'
-                    : 'Swipe down to save and dismiss',
-                style: const TextStyle(color: Colors.grey, fontSize: 14),
+
+          // Bottom buttons section - moved to bottom of screen with better styling
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 6, bottom: 0),
+              child: Row(
+                children: [
+                  // Cancel button - simple text style
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop(); // Cancel and close modal
+                      },
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        foregroundColor: Colors.black87,
+                        backgroundColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600, // Bolder text
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(width: 48),
+
+                  // Save button - more prominent
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _saveTodo, // Use the dedicated save method
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        backgroundColor: const Color(0xFFB8860B), // Gold/bronze
+                        foregroundColor: Colors.white,
+                        elevation:
+                            3, // Increased elevation for better visibility
+                        shadowColor: Colors.black38,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text(
+                        'Save',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600, // Bolder text
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -333,7 +415,7 @@ void showTodoFormModal(BuildContext context,
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
-    isDismissible: true, // Allow dismiss by tapping outside
+    isDismissible: true, // Allow dismiss by tapping outside but no auto-save
     enableDrag: true,
     useSafeArea: true,
     useRootNavigator: true,
@@ -363,55 +445,8 @@ void showTodoFormModal(BuildContext context,
         ),
       ),
     ),
-  ).then((_) {
-    // When modal is dismissed, check if we need to create a new todo
-    if (todo == null) {
-      // Get the current values from the providers
-      final todoNotifier =
-          ProviderScope.containerOf(context).read(todoListProvider.notifier);
-      final formValues =
-          ProviderScope.containerOf(context).read(todoFormValuesProvider);
-      final todoType =
-          ProviderScope.containerOf(context).read(todoTypeProvider);
-
-      final titleText = formValues['title'] as String;
-
-      // Create and add the todo if title is not empty
-      if (titleText.isNotEmpty) {
-        // Set rollover and scheduled based on todo type
-        bool rollover = false;
-        Set<int> scheduled = {};
-
-        switch (todoType) {
-          case TodoType.scheduled:
-            scheduled = ProviderScope.containerOf(context)
-                .read(todoScheduledDaysProvider);
-            // Validate scheduled days
-            if (scheduled.isEmpty) {
-              return; // Don't create a scheduled todo with no days selected
-            }
-            break;
-          case TodoType.default_todo:
-          default:
-            break;
-        }
-
-        final newTodo = Todo.create(
-          title: titleText,
-          description: formValues['description'] as String,
-          priority: formValues['priority'] as int,
-          rollover: rollover,
-          scheduled: scheduled,
-        );
-
-        talker.debug('[TodoFormModal] Creating new todo: ${newTodo.title}');
-        talker.debug(
-            '[TodoFormModal] Type: $todoType, Rollover: $rollover, Scheduled: $scheduled');
-
-        todoNotifier.addTodo(newTodo);
-      }
-    }
-  });
+  );
+  // Auto-save on dismiss functionality is removed to prevent double saves
 }
 
 /// Shows a modal bottom sheet specifically for adding a scheduled/recurring task

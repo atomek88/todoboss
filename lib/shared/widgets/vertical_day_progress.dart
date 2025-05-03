@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:todoApp/core/providers/date_provider.dart';
 
 class VerticalDayProgressScreen extends ConsumerStatefulWidget {
   const VerticalDayProgressScreen({super.key});
@@ -41,13 +42,13 @@ class _VerticalDayProgressScreenState
   }
 
   double _calculateDayProgress() {
-    final now = DateTime.now();
+    final now = ref.read(currentDateProvider);
     return (now.hour * 60 + now.minute) / (24 * 60);
   }
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
+    final now = ref.watch(currentDateProvider);
     final int hour = now.hour;
 
     Color sliderColor = Colors.blue;

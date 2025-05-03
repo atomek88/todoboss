@@ -14,7 +14,7 @@ class AppRouter extends $AppRouter {
         AutoRoute(page: HomeWrapperRoute.page),
         AutoRoute(page: SplashRoute.page, initial: true),
         // other pages routes
-        AutoRoute(page: TodosHomeRoute.page),
+        AutoRoute(page: UnifiedTodosRoute.page),  // Unified route replaces TodosHome
         AutoRoute(page: ProfileWrapperRoute.page),
 
         // EditTaskRoute should be nested under TodosHomeRoute

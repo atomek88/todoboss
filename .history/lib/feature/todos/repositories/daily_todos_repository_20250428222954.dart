@@ -1,0 +1,384 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
+import 'package:isar/isar.dart';
+
+import 'package:todoApp/core/storage/storage_service.dart';
+import 'package:todoApp/feature/todos/models/todo.dart';
+import 'package:todoApp/feature/todos/models/daily_todo.dart';
+import 'package:todoApp/feature/todos/models/daily_todo_isar.dart';
+
+/// Repository for managing DailyTodo objects
+class DailyTodoRepository {
+  final StorageService _storageService;
+  Isar? _isar;
+  final _initCompleter = Completer<void>();
+  bool _isInitialized = false;
+
+  /// Constructor
+  DailyTodoRepository(this._storageService) {
+    _initialize();
+  }
+
+  /// Initialize the repository
+  Future<void> _initialize() async {
+    if (_isInitialized) return;
+
+    try {
+      debugPrint('📅 [DailyTodoRepository] Initializing...');
+      _isar = await _storageService.getIsar();
+      _isInitialized = true;
+      _initCompleter.complete();
+      debugPrint('📅 [DailyTodoRepository] Initialized successfully');
+    } catch (e) {
+      debugPrint('📅 [DailyTodoRepository] Error initializing: $e');
+      _initCompleter.completeError(e);
+      rethrow;
+    }
+  }
+
+  /// Wait for initialization to complete
+  Future<void> get initialized => _initCompleter.future;
+
+  /// Get a DailyTodo by ID (format: DDMMYYYY)
+  Future<DailyTodo?> getDailyTodoById(String id) async {
+    try {
+      await initialized;
+
+      // Simple query until we can run build_runner
+      final todoDateIsars =
+          await _isar!.collection<DailyTodoIsar>().where().findAll();
+
+      final todoDateIsar =
+          todoDateIsars.where((td) => td.dateId == id).firstOrNull;
+
+      if (todoDateIsar != null) {
+        debugPrint(
+            '📅 [DailyTodoRepository] Found DailyTodo: ${todoDateIsar.dateId}');
+        return todoDateIsar.toDomain();
+      }
+
+      debugPrint('📅 [DailyTodoRepository] DailyTodo not found for ID: $id');
+      return null;
+    } catch (e) {
+      debugPrint('📅 [DailyTodoRepository] Error getting DailyTodo by ID: $e');
+      return null;
+    }
+  }
+
+  /// Get a DailyTodo for a specific date, creating if it doesn't exist
+  Future<DailyTodo> getDailyTodoForDate(DateTime date,
+      {int defaultGoal = 0}) async {
+    try {
+      await initialized;
+
+      // Normalize date to midnight
+      final normalizedDate = DateTime(date.year, date.month, date.day);
+
+      // Format ID from date
+      final dateId =
+          '${normalizedDate.day.toString().padLeft(2, '0')}${normalizedDate.month.toString().padLeft(2, '0')}${normalizedDate.year}';
+
+      // Try to get existing DailyTodo
+      var todoDate = await getDailyTodoById(dateId);
+
+      // If not found, create a new one
+      if (todoDate == null) {
+        todoDate = DailyTodo.fromDate(normalizedDate, taskGoal: defaultGoal);
+        await saveDailyTodo(todoDate);
+        debugPrint(
+            '📅 [DailyTodoRepository] Created new DailyTodo for: $normalizedDate with goal: $defaultGoal');
+      } else {
+        // ALWAYS update the goal if the default goal is set and different from current
+        if (defaultGoal > 0 && todoDate.taskGoal != defaultGoal) {
+          todoDate = todoDate.copyWith(taskGoal: defaultGoal);
+          await saveDailyTodo(todoDate);
+          debugPrint(
+              '📅 [DailyTodoRepository] Updated DailyTodo with default goal: $defaultGoal (was: ${todoDate.taskGoal})');
+        } else {
+          debugPrint(
+              '📅 [DailyTodoRepository] Using existing DailyTodo with goal: ${todoDate.taskGoal}');
+        }
+      }
+
+      return todoDate;
+    } catch (e) {
+      debugPrint(
+          '📅 [DailyTodoRepository] Error getting DailyTodo for date: $e');
+      // Return a default DailyTodo if we couldn't get one
+      return DailyTodo.fromDate(date, taskGoal: defaultGoal);
+    }
+  }
+
+  /// Get all DailyTodos
+  Future<List<DailyTodo>> getAllDailyTodos() async {
+    try {
+      await initialized;
+
+      final todoDateIsars =
+          await _isar!.collection<DailyTodoIsar>().where().findAll();
+
+      final todoDates =
+          todoDateIsars.map((todoDateIsar) => todoDateIsar.toDomain()).toList();
+
+      debugPrint(
+          '📅 [DailyTodoRepository] Found ${todoDates.length} DailyTodos');
+      return todoDates;
+    } catch (e) {
+      debugPrint('📅 [DailyTodoRepository] Error getting all DailyTodos: $e');
+      return [];
+    }
+  }
+
+  /// Save a DailyTodo
+  Future<bool> saveDailyTodo(DailyTodo todoDate) async {
+    try {
+      await initialized;
+
+      final todoDateIsar = DailyTodoIsar.fromDomain(todoDate);
+
+      // Find existing by ID
+      // Simple query until we can run build_runner
+      final todoDateIsars =
+          await _isar!.collection<DailyTodoIsar>().where().findAll();
+
+      final existing =
+          todoDateIsars.where((td) => td.dateId == todoDate.id).firstOrNull;
+
+      if (existing != null) {
+        todoDateIsar.id = existing.id;
+      }
+
+      await _isar!.writeTxn(() async {
+        await _isar!.collection<DailyTodoIsar>().put(todoDateIsar);
+      });
+
+      debugPrint('📅 [DailyTodoRepository] Saved DailyTodo: ${todoDate.id}');
+      return true;
+    } catch (e) {
+      debugPrint('📅 [DailyTodoRepository] Error saving DailyTodo: $e');
+      return false;
+    }
+  }
+
+  /// Delete a DailyTodo by ID
+  Future<bool> deleteDailyTodo(String id) async {
+    try {
+      await initialized;
+
+      final todoDateIsars =
+          await _isar!.collection<DailyTodoIsar>().where().build().findAll();
+      final existing = todoDateIsars.where((td) => td.dateId == id).firstOrNull;
+
+      if (existing == null) {
+        debugPrint(
+            '📅 [DailyTodoRepository] DailyTodo not found for deletion: $id');
+        return false;
+      }
+
+      await _isar!.writeTxn(() async {
+        await _isar!.collection<DailyTodoIsar>().delete(existing.id);
+      });
+
+      debugPrint('📅 [DailyTodoRepository] Deleted DailyTodo: $id');
+      return true;
+    } catch (e) {
+      debugPrint('📅 [DailyTodoRepository] Error deleting DailyTodo: $e');
+      return false;
+    }
+  }
+
+  /// Add a todo ID to a specific date
+  /// This is important for tracking which todos belong to which date
+  Future<DailyTodo?> addTodoToDate(DateTime date, Todo todo) async {
+    try {
+      await initialized;
+
+      // Normalize date to midnight
+      final normalizedDate = DateTime(date.year, date.month, date.day);
+
+      // Get or create the DailyTodo for this date
+      final dailyTodo = await getDailyTodoForDate(normalizedDate);
+
+      // Only add if the todo ID isn't already tracked by this date
+      if (!dailyTodo.todos.contains(todo)) {
+        // Add the todo ID to the DailyTodo
+        final updatedDailyTodo = dailyTodo.addTodoId(todo);
+
+        // Save the updated DailyTodo
+        await saveDailyTodo(updatedDailyTodo);
+
+        debugPrint(
+            '📅 [DailyTodoRepository] Added todo ${todo.id} to date ${dailyTodo.id}');
+        return updatedDailyTodo;
+      } else {
+        debugPrint(
+            '📅 [DailyTodoRepository] Todo ${todo.id} already on date ${dailyTodo.id}');
+        return dailyTodo;
+      }
+    } catch (e) {
+      debugPrint('📅 [DailyTodoRepository] Error adding todo to date: $e');
+      return null;
+    }
+  }
+
+  /// Remove a todo ID from a specific date
+  Future<DailyTodo?> removeTodoFromDate(DateTime date, Todo todo) async {
+    try {
+      await initialized;
+
+      // Normalize date to midnight
+      final normalizedDate = DateTime(date.year, date.month, date.day);
+
+      // Get the DailyTodo for this date
+      final dailyTodo = await getDailyTodoForDate(normalizedDate);
+
+      // Only remove if the todo ID is tracked by this date
+      if (dailyTodo.todos.contains(todo)) {
+        // Remove the todo ID from the DailyTodo
+        final updatedDailyTodo = dailyTodo.removeTodoId(todo);
+
+        // Save the updated DailyTodo
+        await saveDailyTodo(updatedDailyTodo);
+
+        debugPrint(
+            '📅 [DailyTodoRepository] Removed todo ${todo.id} from date ${dailyTodo.id}');
+        return updatedDailyTodo;
+      } else {
+        debugPrint(
+            '📅 [DailyTodoRepository] Todo ${todo.id} not on date ${dailyTodo.id}');
+        return dailyTodo;
+      }
+    } catch (e) {
+      debugPrint('📅 [DailyTodoRepository] Error removing todo from date: $e');
+      return null;
+    }
+  }
+
+  /// Update the DailyTodo counters based on todos for a specific date
+  Future<DailyTodo?> updateDailyTodoCounters(DateTime date, List<Todo> todos,
+      {int defaultGoal = 0}) async {
+    try {
+      await initialized;
+
+      // Use the provided goal or fallback to a reasonable default
+      final goalToUse = defaultGoal > 0 ? defaultGoal : 20;
+
+      // Get the DailyTodo with the correct goal
+      final dailyTodo = await getDailyTodoForDate(date, defaultGoal: goalToUse);
+
+      // Normalize the date for comparison
+      final normalizedDate = DateTime(date.year, date.month, date.day);
+
+      debugPrint(
+          '📅 [DailyTodoRepository] Calculating counters for date: ${normalizedDate.toString().split(' ')[0]}');
+
+      // Filter todos to only include those for this specific date
+      final todosForDate = todos.where((todo) {
+        // For created todos, check if they were created on this date
+        final createdOnThisDate = DateTime(todo.createdAt.year,
+                todo.createdAt.month, todo.createdAt.day) ==
+            normalizedDate;
+
+        // For completed/deleted todos, check if they were ended on this date
+        final endedOnThisDate = todo.endedOn != null &&
+            DateTime(todo.endedOn!.year, todo.endedOn!.month,
+                    todo.endedOn!.day) ==
+                normalizedDate;
+
+        final result = createdOnThisDate || endedOnThisDate;
+
+        if (result) {
+          debugPrint(
+              '📅 [DailyTodoRepository] Including todo: ${todo.title} (status: ${todo.status})');
+        }
+
+        return result;
+      }).toList();
+
+      // Calculate counters for this date only
+      final completedCount =
+          todosForDate.where((todo) => todo.status == 1).length;
+      final deletedCount =
+          todosForDate.where((todo) => todo.status == 2).length;
+
+      // Get the list of todos for this date
+      final todos = todosForDate.map((todo) => todo.id).toList();
+
+      // Preserve the task goal from the existing DailyTodo
+      final taskGoal = dailyTodo.taskGoal;
+
+      debugPrint(
+          '📅 [DailyTodoRepository] Found ${todosForDate.length} todos for date: ${normalizedDate.toString().split(' ')[0]}');
+      debugPrint(
+          '📅 [DailyTodoRepository] Completed: $completedCount, Deleted: $deletedCount, Goal: $taskGoal');
+
+      // Update the DailyTodo
+      final updatedDailyTodo = dailyTodo.copyWith(
+        completedTodosCount: completedCount,
+        deletedTodosCount: deletedCount,
+        todos: todosForDate,
+        taskGoal: taskGoal, // Ensure goal is preserved
+        // only generate summary is date is in past
+        summary:
+            dailyTodo.isPast ? dailyTodo.generateSummary(todosForDate) : null,
+      );
+
+      // Save it
+      await saveDailyTodo(updatedDailyTodo);
+
+      debugPrint(
+          '📅 [DailyTodoRepository] Updated DailyTodo counters for ${dailyTodo.id}: completed=$completedCount, deleted=$deletedCount, goal=$taskGoal');
+      return updatedDailyTodo;
+    } catch (e) {
+      debugPrint(
+          '📅 [DailyTodoRepository] Error updating DailyTodo counters: $e');
+      return null;
+    }
+  }
+
+  /// Get all past DailyTodos
+  Future<List<DailyTodo>> getPastDailyTodos() async {
+    try {
+      await initialized;
+
+      final today = DateTime.now();
+      final normalizedToday = DateTime(today.year, today.month, today.day);
+
+      final allDailyTodos = await getAllDailyTodos();
+
+      return allDailyTodos
+          .where((todoDate) => todoDate.date.isBefore(normalizedToday))
+          .toList()
+        // Sort by date, most recent first
+        ..sort((a, b) => b.date.compareTo(a.date));
+    } catch (e) {
+      debugPrint('📅 [DailyTodoRepository] Error getting past DailyTodos: $e');
+      return [];
+    }
+  }
+
+  /// Get the DailyTodo for today
+  Future<DailyTodo> getTodayDailyTodo({int defaultGoal = 0}) async {
+    final today = DateTime.now();
+    return getDailyTodoForDate(today, defaultGoal: defaultGoal);
+  }
+
+  /// Set the task goal for a specific date
+  Future<DailyTodo?> setTaskGoal(DateTime date, int goal) async {
+    try {
+      await initialized;
+
+      final todoDate = await getDailyTodoForDate(date);
+      final updatedDailyTodo = todoDate.copyWith(taskGoal: goal);
+
+      await saveDailyTodo(updatedDailyTodo);
+
+      debugPrint(
+          '📅 [DailyTodoRepository] Set task goal for ${todoDate.id} to $goal');
+      return updatedDailyTodo;
+    } catch (e) {
+      debugPrint('📅 [DailyTodoRepository] Error setting task goal: $e');
+      return null;
+    }
+  }
+}

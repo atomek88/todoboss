@@ -110,7 +110,6 @@
 				71DD62A05558925CA9DD2F4B /* Pods-RunnerTests.profile-dev.xcconfig */,
 				68217AC59B9401FF0298F6B5 /* Pods-RunnerTests.profile-prod.xcconfig */,
 			);
-			name = Pods;
 			path = Pods;
 			sourceTree = "<group>";
 		};
@@ -475,7 +474,7 @@
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DISPLAY_NAME = ProfileRiverpodTemplate;
+				DISPLAY_NAME = todoless;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
@@ -502,7 +501,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
-				DEVELOPMENT_TEAM = AM2A35C3AY;
+				DEVELOPMENT_TEAM = HU7PK35NZK;
 				ENABLE_BITCODE = NO;
 				FLUTTER_TARGET = lib/main/main_dev.dart;
 				INFOPLIST_FILE = Runner/Info.plist;
@@ -510,7 +509,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = dev.dinakar.flutter.rivperpod.template;
+				PRODUCT_BUNDLE_IDENTIFIER = com.daedalus.todoless;
 				PRODUCT_NAME = todoless;
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
@@ -527,7 +526,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.rally.todo.RunnerTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.daedalus.todoless.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -545,7 +544,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.rally.todo.RunnerTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.daedalus.todoless.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Runner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Runner";
@@ -561,7 +560,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.rally.todo.RunnerTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.daedalus.todoless.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Runner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Runner";
@@ -599,7 +598,7 @@
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DISPLAY_NAME = DebugRiverpodTemplate;
+				DISPLAY_NAME = todoless;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
@@ -631,7 +630,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
-				DEVELOPMENT_TEAM = AM2A35C3AY;
+				DEVELOPMENT_TEAM = HU7PK35NZK;
 				ENABLE_BITCODE = NO;
 				FLUTTER_TARGET = lib/main/main_prod.dart;
 				INFOPLIST_FILE = Runner/Info.plist;
@@ -639,8 +638,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = dinakar.flutter.rivperpod.template;
-				PRODUCT_NAME = RiverpodTemplate;
+				PRODUCT_BUNDLE_IDENTIFIER = com.daedalus.todoless;
+				PRODUCT_NAME = todoless;
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -657,7 +656,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.rally.todo.RunnerTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.daedalus.todoless.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -697,7 +696,7 @@
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DISPLAY_NAME = RiverpodTemplate;
+				DISPLAY_NAME = todoless;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
@@ -726,7 +725,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
-				DEVELOPMENT_TEAM = AM2A35C3AY;
+				DEVELOPMENT_TEAM = HU7PK35NZK;
 				ENABLE_BITCODE = NO;
 				FLUTTER_TARGET = lib/main/main_proddart;
 				INFOPLIST_FILE = Runner/Info.plist;
@@ -734,8 +733,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = dinakar.flutter.rivperpod.template;
-				PRODUCT_NAME = RiverpodTemplate;
+				PRODUCT_BUNDLE_IDENTIFIER = com.daedalus.todoless;
+				PRODUCT_NAME = todoless;
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -751,7 +750,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.rally.todo.RunnerTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.daedalus.todoless.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Runner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Runner";
@@ -789,7 +788,7 @@
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DISPLAY_NAME = ProfileRiverpodTemplate;
+				DISPLAY_NAME = todoless;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
@@ -816,7 +815,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
-				DEVELOPMENT_TEAM = AM2A35C3AY;
+				DEVELOPMENT_TEAM = HU7PK35NZK;
 				ENABLE_BITCODE = NO;
 				FLUTTER_TARGET = lib/main/main_prod.dart;
 				INFOPLIST_FILE = Runner/Info.plist;
@@ -824,8 +823,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = dinakar.flutter.rivperpod.template;
-				PRODUCT_NAME = RiverpodTemplate;
+				PRODUCT_BUNDLE_IDENTIFIER = com.daedalus.todoless;
+				PRODUCT_NAME = todoless;
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -841,7 +840,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.rally.todo.RunnerTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.daedalus.todoless.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Runner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Runner";
@@ -879,7 +878,7 @@
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DISPLAY_NAME = DebugRiverpodTemplate;
+				DISPLAY_NAME = todoless;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
@@ -935,7 +934,7 @@
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DISPLAY_NAME = RiverpodTemplate;
+				DISPLAY_NAME = todoless;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
@@ -964,7 +963,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
-				DEVELOPMENT_TEAM = AM2A35C3AY;
+				DEVELOPMENT_TEAM = HU7PK35NZK;
 				ENABLE_BITCODE = NO;
 				FLUTTER_TARGET = lib/main/main_dev.dart;
 				INFOPLIST_FILE = Runner/Info.plist;
@@ -972,7 +971,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = dev.dinakar.flutter.rivperpod.template;
+				PRODUCT_BUNDLE_IDENTIFIER = com.daedalus.todoless;
 				PRODUCT_NAME = todoless;
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -988,7 +987,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
-				DEVELOPMENT_TEAM = AM2A35C3AY;
+				DEVELOPMENT_TEAM = HU7PK35NZK;
 				ENABLE_BITCODE = NO;
 				FLUTTER_TARGET = lib/main/main_dev.dart;
 				INFOPLIST_FILE = Runner/Info.plist;
@@ -996,7 +995,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = dev.dinakar.flutter.rivperpod.template;
+				PRODUCT_BUNDLE_IDENTIFIER = com.daedalus.todoless;
 				PRODUCT_NAME = todoless;
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;

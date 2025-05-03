@@ -2,6 +2,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:todoApp/feature/users/models/user_model.dart';
 import 'package:todoApp/feature/users/repositories/user_repository.dart';
 import 'package:todoApp/core/storage/storage_service.dart';
+import 'package:todoApp/core/providers/date_provider.dart';
 
 // Repository provider
 final userRepositoryProvider = Provider<UserRepository>((ref) {
@@ -24,13 +25,18 @@ class UserNotifier extends StateNotifier<UserModel?> {
     state = user;
   }
 
-  // Create a new user
-  Future<void> createUser(String firstName, String lastName) async {
+  // Create a new user (maintaining backward compatibility)
+  Future<void> createUser(String firstName, String lastName, [WidgetRef? widgetRef]) async {
+    // Generate timestamp - use provider if available, otherwise fall back to DateTime.now()
+    final timestamp = widgetRef != null 
+        ? widgetRef.read(currentDateProvider)
+        : normalizeDate(DateTime.now());
+    
     final newUser = UserModel(
-      id: DateTime.now().millisecondsSinceEpoch, // Generate a unique ID
+      id: timestamp.millisecondsSinceEpoch, // Generate a unique ID from timestamp
       firstName: firstName,
       lastName: lastName,
-      createdAt: DateTime.now(),
+      createdAt: timestamp, // Use consistent timestamp
     );
     
     await _repository.saveUser(newUser);
@@ -63,4 +69,30 @@ class UserNotifier extends StateNotifier<UserModel?> {
 final userProvider = StateNotifierProvider<UserNotifier, UserModel?>((ref) {
   final repository = ref.watch(userRepositoryProvider);
   return UserNotifier(repository);
+});
+
+// Helper provider to create a user with the current date
+final createUserProvider = Provider.family<Future<void>, ({String firstName, String lastName})>(
+  (ref, userData) async {
+    // Extract the current date from the provider
+    final currentDate = ref.read(currentDateProvider);
+    
+    // Create the user model directly
+    final newUser = UserModel(
+      id: currentDate.millisecondsSinceEpoch,
+      firstName: userData.firstName,
+      lastName: userData.lastName,
+      createdAt: currentDate,
+    );
+    
+    // Get the notifier and add the user directly
+    final userNotifier = ref.watch(userProvider.notifier);
+    await userNotifier.setUser(newUser);
+  },
+);
+
+// Provider for getting the current user creation date
+final userCreationDateProvider = Provider<DateTime?>((ref) {
+  final user = ref.watch(userProvider);
+  return user?.createdAt;
 });
