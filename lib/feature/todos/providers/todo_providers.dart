@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:todoApp/core/globals.dart';
 import 'package:todoApp/core/storage/storage_service.dart';
 import '../models/todo.dart';
 import '../repositories/todo_repository.dart';

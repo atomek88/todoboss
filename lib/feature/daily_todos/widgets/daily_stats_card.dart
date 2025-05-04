@@ -5,7 +5,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:todoApp/core/providers/date_provider.dart';
 import 'package:todoApp/feature/daily_todos/models/daily_todo.dart';
 import 'package:todoApp/feature/daily_todos/providers/daily_todos_provider.dart';
-import 'package:todoApp/feature/todos/views/past_date_page.dart';
+import 'package:todoApp/feature/daily_todos/providers/daily_todo_summary_providers.dart';
 import 'package:todoApp/shared/navigation/app_router.gr.dart';
 
 /// A card that displays daily statistics for todos
@@ -18,81 +18,90 @@ class DailyStatsCard extends ConsumerWidget {
     final normalizedSelectedDate =
         normalizeDate(ref.watch(selectedDateProvider));
 
-    // Watch the DailyTodo provider to display stats
+    // Watch the dailyTodoByDate provider for this date
+    final dailyStatsAsync =
+        ref.watch(dailyTodoByDateProvider(normalizedSelectedDate));
+
+    // Watch the DailyTodo provider as backup (bridge provider)
     final dailyTodoAsync = ref.watch(dailyTodoProvider);
 
-    return dailyTodoAsync.when(
-      data: (dailyTodo) {
-        if (dailyTodo == null) {
-          return const SizedBox(height: 8);
-        }
+    // First try using the new provider
+    return dailyStatsAsync.when(
+      data: (stats) {
+        // Use the data from daily stats provider
+        // Get the dailyTodo from our AsyncValue provider
+        return dailyTodoAsync.when(
+          data: (dailyTodo) {
+            if (dailyTodo == null) {
+              return const SizedBox(height: 8);
+            }
 
-        return Card(
-          margin: const EdgeInsets.all(8),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            return Card(
+              margin: const EdgeInsets.all(8),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      'Daily Stats',
-                      style: Theme.of(context).textTheme.titleMedium,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Daily Stats',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(width: 40),
+                        // Today button
+                        _TodayButton(
+                            normalizedSelectedDate: normalizedSelectedDate),
+                        // History button for past dates
+                        _HistoryButton(),
+                        // Profile icon button
+                        _ProfileButton(),
+                      ],
                     ),
-                    const SizedBox(width: 40),
-                    // Today button
-                    _TodayButton(
-                        normalizedSelectedDate: normalizedSelectedDate),
-                    // History button for past dates
-                    _HistoryButton(),
-                    // Profile icon button
-                    _ProfileButton(),
+                    const Divider(),
+                    _StatsCountersRow(dailyTodo: dailyTodo),
+                    if (dailyTodo.taskGoal > 0) ...[
+                      const SizedBox(height: 16),
+                      LinearProgressIndicator(
+                        value: dailyTodo.taskGoal > 0
+                            ? (dailyTodo.completedTodosCount /
+                                    dailyTodo.taskGoal)
+                                .clamp(0.0, 1.0)
+                            : 0.0,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Progress: ${dailyTodo.completedTodosCount}/${dailyTodo.taskGoal} (${(dailyTodo.completionPercentage).toStringAsFixed(0)}%)',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                    if (dailyTodo.summary != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        dailyTodo.summary!,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              fontStyle: FontStyle.italic,
+                            ),
+                      ),
+                    ],
                   ],
                 ),
-                const Divider(),
-                _StatsCountersRow(dailyTodo: dailyTodo),
-                if (dailyTodo.taskGoal > 0) ...[
-                  const SizedBox(height: 16),
-                  LinearProgressIndicator(
-                    value: dailyTodo.taskGoal > 0
-                        ? (dailyTodo.completedTodosCount / dailyTodo.taskGoal)
-                            .clamp(0.0, 1.0)
-                        : 0.0,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Progress: ${dailyTodo.completedTodosCount}/${dailyTodo.taskGoal} (${(dailyTodo.completionPercentage).toStringAsFixed(0)}%)',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-                if (dailyTodo.summary != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    dailyTodo.summary!,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontStyle: FontStyle.italic,
-                        ),
-                  ),
-                ],
-              ],
-            ),
-          ),
+              ),
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, stack) => Text('Error loading dailyTodo: $err'),
         );
       },
-      loading: () => const SizedBox(
-        height: 115,
-        child: Center(
-          child: CircularProgressIndicator(),
-        ),
-      ),
-      error: (error, stack) => Card(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, stack) => Card(
         margin: const EdgeInsets.all(8),
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Text('Error loading daily stats: $error'),
+          child: Text('Error loading daily stats: $err'),
         ),
       ),
     );
@@ -150,9 +159,9 @@ class _HistoryButton extends ConsumerWidget {
     return IconButton(
       icon: const Icon(Icons.calendar_month_rounded),
       tooltip: 'View Past Dates',
-      onPressed: () {
+      onPressed: () async {
         // Show a date picker to select past dates
-        showDatePicker(
+        final selectedDate = await showDatePicker(
           context: context,
           initialDate:
               ref.read(currentDateProvider).subtract(const Duration(days: 1)),
@@ -160,16 +169,13 @@ class _HistoryButton extends ConsumerWidget {
               ref.read(currentDateProvider).subtract(const Duration(days: 365)),
           lastDate:
               ref.read(currentDateProvider).subtract(const Duration(days: 1)),
-        ).then((selectedDate) {
-          if (selectedDate != null) {
-            // Navigate to the past date page with the selected date
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => PastDatePage(date: selectedDate),
-              ),
-            );
-          }
-        });
+        );
+
+        // Check if widget is still mounted before using context
+        if (selectedDate != null && context.mounted) {
+          // Navigate to the past date page with the selected date
+          context.router.push(const UnifiedTodosRoute());
+        }
       },
     );
   }
